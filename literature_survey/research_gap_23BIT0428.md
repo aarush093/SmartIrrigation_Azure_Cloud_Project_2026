@@ -53,9 +53,9 @@
 
 ---
 
-## Paper 14 — Katimbo et al. (2023), *Smart Agricultural Technologies*
+## Paper 14 — Katimbo et al. (2023), *Smart Agricultural Technology*
 
-**Citation:** A. Katimbo, D. R. Rudnick, J. Zhang, Y. Ge, K. C. DeJonge, T. E. Franz, Y. Shi, W. Liang, X. Qiao, D. M. Heeren, I. Kabenge, H. N. Nakabuye, and J. Duan, "Evaluation of artificial intelligence algorithms with sensor data assimilation in estimating crop evapotranspiration and crop water stress index for irrigation water management," *Smart Agricultural Technologies*, 2023. DOI: 10.1016/j.atech.2023.100176
+**Citation:** A. Katimbo, D. R. Rudnick, J. Zhang, Y. Ge, K. C. DeJonge, T. E. Franz, Y. Shi, W. Liang, X. Qiao, D. M. Heeren, I. Kabenge, H. N. Nakabuye, and J. Duan, "Evaluation of artificial intelligence algorithms with sensor data assimilation in estimating crop evapotranspiration and crop water stress index for irrigation water management," *Smart Agricultural Technology*, vol. 4, art. 100176, Aug. 2023. DOI: 10.1016/j.atech.2023.100176
 
 | Aspect | Assessment |
 |---|---|
