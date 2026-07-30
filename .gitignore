@@ -1,0 +1,72 @@
+# Environment and secrets — NEVER commit these
+.env
+.env.*
+*.pem
+*.key
+local.settings.json
+appsettings.Development.json
+secrets.json
+
+# Python
+__pycache__/
+*.py[cod]
+*.so
+.Python
+venv/
+.venv/
+env/
+*.egg-info/
+.pytest_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+
+# Jupyter
+.ipynb_checkpoints/
+
+# Node / frontend
+node_modules/
+dist/
+build/
+.vite/
+npm-debug.log*
+yarn-error.log*
+
+# Azure
+.azure/
+bin/
+obj/
+.python_packages/
+
+# Machine learning artefacts — models are registered in Azure ML, not committed
+*.h5
+*.keras
+*.pkl
+*.joblib
+*.onnx
+mlruns/
+outputs/
+
+# Data — never commit raw or processed data to the repository
+data/raw/
+data/processed/
+data/interim/
+*.csv
+*.parquet
+*.tif
+*.nc
+!docs/**/*.csv
+
+# IDE
+.vscode/
+.idea/
+*.swp
+
+# OS
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Logs
+*.log
+logs/
