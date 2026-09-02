@@ -26,7 +26,7 @@ PIP    := $(BIN)/pip
 HANDOFF_FRONTEND := handoff/student1_frontend
 HANDOFF_AI       := handoff/student3_ai_model
 
-.PHONY: help setup test lint format demo sim func-start deploy-plan sync-handoff clean
+.PHONY: help setup test lint format demo sim validate func-start deploy-plan sync-handoff clean
 
 help:  ## Show the available targets
 	@grep -hE '^[a-zA-Z_-]+:.*?## ' $(MAKEFILE_LIST) \
@@ -44,6 +44,9 @@ test:  ## Run the unit test suite (no network; integration tests are skipped)
 
 test-integration:  ## Run the tests that hit Open-Meteo, SoilGrids and NASA POWER
 	$(BIN)/pytest -m integration
+
+validate:  ## Objective 2 ET0 cross-check against Open-Meteo. Hits the live API.
+	$(BIN)/pytest tests/validation/et0_crosscheck.py -m integration -s
 
 test-cov:  ## Run the unit suite with a coverage report
 	$(BIN)/pytest --cov --cov-report=term-missing
