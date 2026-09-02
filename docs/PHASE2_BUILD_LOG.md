@@ -281,3 +281,45 @@ deliberate: it fixes the public API before behaviour exists, so the scheduler,
 the Functions layer and both teammate handoff packages can be written against a
 contract that is already enforced by test.
 
+---
+
+## 2026-09-02 — M1, corrections carried in
+
+### Correction: Ky is not an FAO-56 parameter
+
+The build brief instructed that the crop parameter set, including the yield
+response factor Ky, be seeded from FAO-56 Tables 11, 12 and 22. That attribution
+is wrong for Ky and was corrected by the repository owner before implementation.
+Recorded here so the trail shows the error was caught rather than shipped.
+
+| Parameter | Correct source |
+|---|---|
+| Stage lengths `L_ini`, `L_dev`, `L_mid`, `L_late` | FAO-56 Table 11, lengths of crop development stages |
+| `Kc_ini`, `Kc_mid`, `Kc_end` | FAO-56 Table 12, single time-averaged crop coefficients |
+| `Zr`, `p` | FAO-56 Table 22, maximum effective rooting depth and depletion fraction |
+| `Ky` | **FAO-33** (Doorenbos and Kassam, *Yield response to water*, 1979), with stage-wise values updated in **FAO-66** (Steduto, Hsiao, Fereres and Raes, *Crop yield response to water*, 2012). **Ky does not appear in FAO-56.** |
+
+Actions taken: FAO-33 and FAO-66 added to the plan's reference list as R24 and
+R25; the source table added to `CLAUDE.md` section 4; the citation on
+`CropStage.yield_response_factor` in `models.py` corrected from "FAO-33 / FAO-56
+Table 24" to FAO-33 with the FAO-66 update; every Ky entry in
+``params/crops.yaml`` cites FAO-33 or FAO-66 and carries `TODO [VERIFY]` where
+the printed value could not be confirmed against a copy of the paper.
+
+### Ruling on reference values in tests
+
+No numeric "reference" value is written into a test unless it was confirmed
+against a source actually consulted. Where a FAO-56 worked example could not be
+confirmed, the test asserts physical bounds and sensitivity properties instead,
+with `TODO [VERIFY] FAO-56 example number and printed value` above it. A test
+asserting a fabricated reference value is worse than no test: it looks
+authoritative and would be quoted back in the viva.
+
+The numeric evidence for Objective 2 is therefore not the unit tests but
+`tests/validation/et0_crosscheck.py`, which compares this project's
+Penman-Monteith implementation against Open-Meteo's published
+`et0_fao_evapotranspiration` over a full year at three Indian locations and
+reports n, MAE, RMSE, bias and the fraction of station-days within the 0.2 mm/day
+tolerance. It is marked `integration`, excluded from CI, and run on demand with
+`make validate`.
+

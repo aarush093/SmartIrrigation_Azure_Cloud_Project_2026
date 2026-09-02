@@ -34,9 +34,9 @@ This is graded on the GitHub contribution record, so it is not negotiable.
 
 - **Work only on `feature/student2`.** Never commit to `main` or `develop`.
 - **Never force-push.** Never rewrite published history.
-- **Do not open pull requests from a session.** The repository owner opens
-  `feature/student2 -> develop` pull requests from the GitHub web interface so
-  the review trail is his.
+- **Open a pull request only when the repository owner asks for one**, and
+  **never merge it.** Print the URL and stop; he reviews and merges from the
+  GitHub interface so the review trail is his.
 - One logical change per commit. Conventional-commit style, imperative mood:
   `feat(engine): add Saxton-Rawls pedotransfer`,
   `test(scheduler): window length never exceeded`,
@@ -98,6 +98,10 @@ these into place at runtime; never git. Each handoff folder carries a
   `numpy`, `pydantic`, `httpx`, `pyyaml` only. **No Azure imports anywhere in
   it.** It must stay importable and testable with no network and no cloud
   credentials. This is what makes the agronomy independently reviewable.
+- **`pyyaml` is a permitted fourth dependency and is not to be removed.** The
+  original brief named three, but it also mandates that every agronomic constant
+  lives in `params/*.yaml` and every farmer-facing string in `scripts/*.yaml`,
+  which requires a YAML parser. Approved explicitly. Do not "clean it up".
 - Azure Functions live in `src/azure/functions/` on the Python v2 programming
   model and import the library. The FastAPI application is hosted through
   `AsgiFunctionApp`, so the Phase-I declared stack is what actually runs. Timer
@@ -108,6 +112,16 @@ these into place at runtime; never git. Each handoff folder carries a
 
 - Type hints everywhere. Docstrings on every public function.
 - `ruff` clean and `mypy --strict` clean. Both run in CI on every push.
+- **mypy's `python_version` is deliberately unpinned**, because numpy 2.5 ships
+  stubs using the Python 3.12 `type` statement that mypy rejects when targeting
+  3.11. Support for the 3.11 floor is therefore proved by the CI test matrix
+  rather than by the type checker.
+
+  **Consequence: the "Unit tests (Python 3.11)" CI job is load-bearing.** It must
+  be a required status check on `develop` in branch protection, alongside the
+  lint and 3.12 test jobs. If that job is ever removed or made optional,
+  `python_version = "3.11"` must be restored to `[tool.mypy]` in the same commit.
+  `requires-python = ">=3.11,<3.13"` stays as it is.
 - No bare `except`. No mutable default arguments. No `Any` without a comment
   saying why.
 
@@ -115,8 +129,17 @@ these into place at runtime; never git. Each handoff folder carries a
 
 **Every** agronomic constant — Kc, p, Zr, Ky, Ea, pedotransfer coefficients —
 lives in `src/backend/irrigation_engine/params/*.yaml`, never inline in code.
-Each carries a comment naming its source, for example `FAO-56 Table 12`,
-`FAO-56 Table 22`, `Saxton and Rawls 2006`, `FAO Training Manual 4`.
+Each carries a comment naming its source. The sources, and what each is
+actually the authority for:
+
+| Constant | Source | Note |
+|---|---|---|
+| Stage lengths `L_ini`, `L_dev`, `L_mid`, `L_late` | FAO-56 Table 11 | Lengths of crop development stages |
+| `Kc_ini`, `Kc_mid`, `Kc_end` | FAO-56 Table 12 | Single time-averaged crop coefficients |
+| `Zr`, `p` | FAO-56 Table 22 | Maximum effective rooting depth and depletion fraction |
+| `Ky` | **FAO-33** (Doorenbos and Kassam 1979), stage-wise values updated in **FAO-66** (Steduto et al. 2012) | **Ky is not in FAO-56.** Citing FAO-56 for it is an error a reviewer who knows the papers will catch |
+| `theta_FC`, `theta_WP` regression coefficients | Saxton and Rawls 2006 | Cite the equation number |
+| Application efficiency `Ea` | FAO Irrigation and Drainage Training Manual 4 (Brouwer, Prins and Heibloem 1989) | Overridable per farmer |
 
 **Anything not certain gets `# TODO [VERIFY]` and a conservative default. Never
 invent a number silently.** A wrong constant that looks authoritative is worse
