@@ -70,3 +70,34 @@ desktop.ini
 # Logs
 *.log
 logs/
+
+# ---------------------------------------------------------------------------
+# Phase-II additions
+# ---------------------------------------------------------------------------
+
+# Teammate handoff packages. These files are written here for local end-to-end
+# testing but are committed by their owners from their own GitHub accounts, on
+# their own branches, so that the contribution record stays accurate.
+# See CLAUDE.md, "Teammate handoff rule".
+handoff/
+
+# Azure Functions local configuration. Holds connection strings.
+local.settings.json
+
+# Synthesised speech cached during local runs.
+*.mp3
+*.wav
+
+# Virtual environment
+.venv/
+venv/
+
+# mypy
+.mypy_cache/
+
+# Simulation outputs and test fixtures are versioned: they are the evidence for
+# Objective 6 and for the feeder-schedule parser test. These negations override
+# the blanket *.csv rule above. Raw downloads under data/raw/ stay ignored.
+!results/**/*.csv
+!results/**/*.png
+!tests/fixtures/**/*.csv
