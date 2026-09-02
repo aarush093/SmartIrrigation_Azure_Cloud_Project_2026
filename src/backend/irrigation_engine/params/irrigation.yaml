@@ -1,0 +1,67 @@
+# Irrigation application efficiency and engine defaults.
+#
+# Application efficiency Ea sources:
+#   C. Brouwer, K. Prins and M. Heibloem, "Irrigation Water Management:
+#   Training Manual No. 4, Irrigation Scheduling", FAO, 1989. Plan reference R22.
+#
+# The manual gives ranges rather than single values; the figures below are the
+# values fixed in plan Section 6 and sit inside those ranges. Every one is
+# overridable per farmer at onboarding, because the efficiency of a particular
+# field depends on its levelling, soil and the operator far more than on the
+# method label.
+
+application_efficiency:
+  # Basin and border flood. The least efficient, and the most common on the
+  # smallholdings this project targets.
+  flood: 0.55
+  furrow: 0.65
+  sprinkler: 0.75
+  drip: 0.90
+
+# Bounds on a farmer-supplied override. Outside these the value is a data entry
+# error, not an unusual field.
+efficiency_bounds:
+  min: 0.30
+  max: 0.95
+
+water_balance:
+  # Daily rainfall at or below this depth is not credited to the root zone: light
+  # rain on a dry surface evaporates before it infiltrates. Plan Section 6.
+  min_effective_rain_mm: 3.0
+  # Soil Conservation Service curve number runoff. Off by default because the
+  # pilot has no per-field curve number, and a wrong one silently removes water
+  # the crop actually received.
+  use_scs_runoff: false
+  default_curve_number: 75  # TODO [VERIFY] per soil hydrologic group and cover
+  curve_number_bounds:
+    min: 30
+    max: 100
+
+pump:
+  # Combined pump and motor efficiency used when discharge is estimated from the
+  # nameplate rating rather than measured by bucket test.
+  default_combined_efficiency: 0.5  # TODO [VERIFY] with a local pump dealer or KVK
+  # Standard conversions. Not project choices.
+  watts_per_hp: 746.0
+  gravity: 9.81
+  water_density_kg_per_l: 1.0
+  # A single continuous run longer than this is refused as implausible: it
+  # exceeds any published DISCOM agricultural window, so it indicates a bad area,
+  # depth or discharge rather than a real instruction. Twelve hours.
+  max_single_run_minutes: 720.0
+  # Bounds on an estimated discharge, litres per minute. Outside these the head
+  # or the efficiency is wrong.
+  discharge_bounds_l_per_min:
+    min: 1.0
+    max: 20000.0
+
+# Local area units, for the onboarding screen. A farmer states area in the unit
+# he uses, never in square metres.
+area_units_m2:
+  acre: 4046.86
+  hectare: 10000.0
+  # Regional units. These vary by state and even by district, so each is marked
+  # for verification against the pilot district's revenue convention before use.
+  bigha: 2529.29    # TODO [VERIFY] varies widely by state; this is a common UP value
+  guntha: 101.17    # TODO [VERIFY] Maharashtra; 1/40 acre
+  cent: 40.47       # TODO [VERIFY] Tamil Nadu and Kerala; 1/100 acre
