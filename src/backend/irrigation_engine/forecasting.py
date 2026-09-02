@@ -79,6 +79,8 @@ class KcEt0Forecaster:
     ) -> list[float]:
         """Project crop evapotranspiration as the product of Kc and forecast ET0.
 
+        FAO-56 equation 31: ``ETc = Kc x ET0``.
+
         Args:
             weather: Forecast days in chronological order, starting today.
             stages: Crop parameters for the same days, in the same order.
@@ -87,6 +89,13 @@ class KcEt0Forecaster:
             Crop evapotranspiration per day, mm.
 
         Raises:
-            ValueError: If the two sequences differ in length.
+            ValueError: If the two sequences differ in length. They are paired
+                positionally, so a length mismatch would silently associate a
+                day with the wrong growth stage.
         """
-        raise NotImplementedError("M1")
+        if len(weather) != len(stages):
+            msg = (
+                f"weather and stages must be the same length, got {len(weather)} and {len(stages)}"
+            )
+            raise ValueError(msg)
+        return [stage.kc * day.et0_mm for day, stage in zip(weather, stages, strict=True)]
