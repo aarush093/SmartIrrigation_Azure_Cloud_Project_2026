@@ -307,6 +307,8 @@ R20. R. G. Allen, L. S. Pereira, D. Raes and M. Smith. Crop evapotranspiration: 
 R21. K. E. Saxton and W. J. Rawls. Soil water characteristic estimates by texture and organic matter for hydrologic solutions. Soil Science Society of America Journal, 70(5), 1569 to 1578, 2006.
 R22. C. Brouwer, K. Prins and M. Heibloem. Irrigation Water Management: Training Manual No. 4, Irrigation Scheduling. FAO, 1989.
 R23. Microsoft Learn. Azure Communication Services Call Automation overview and Recognize action. https://learn.microsoft.com/en-us/azure/communication-services/concepts/call-automation/recognize-action
+R24. J. Doorenbos and A. H. Kassam. Yield response to water. FAO Irrigation and Drainage Paper 33, 1979. Source of the yield response factor Ky, which does not appear in FAO-56.
+R25. P. Steduto, T. C. Hsiao, E. Fereres and D. Raes. Crop yield response to water. FAO Irrigation and Drainage Paper 66, 2012. Updated stage-wise Ky values superseding FAO-33 where the two differ.
 
 ---
 

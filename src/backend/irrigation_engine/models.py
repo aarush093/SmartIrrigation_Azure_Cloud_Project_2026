@@ -141,7 +141,10 @@ class CropStage(_Frozen):
         description="Allowable depletion fraction p, before adjustment for ETc. FAO-56 Table 22.",
     )
     yield_response_factor: float = Field(
-        gt=0.0, description="Yield response factor Ky for the stage. FAO-33 / FAO-56 Table 24."
+        gt=0.0,
+        description="Yield response factor Ky for the stage, dimensionless. "
+        "FAO-33 (Doorenbos and Kassam 1979); stage-wise values updated in FAO-66 "
+        "(Steduto et al. 2012). Ky does not appear in FAO-56.",
     )
 
 
