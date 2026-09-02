@@ -6,9 +6,8 @@ unless asked for. See CLAUDE.md section 4.
 
 The fakes are deliberately plain: they replay data handed to them, so a test's
 expected values sit in the test rather than being hidden in a fixture that
-quietly changes behaviour.
-
-Implemented in M1.
+quietly changes behaviour. They also count their calls, which is how the caching
+requirement on the soil provider is tested.
 """
 
 from __future__ import annotations
@@ -39,7 +38,9 @@ class FakeWeatherProvider:
             archive: Days returned by :meth:`fetch_archive`. Defaults to the
                 forecast series.
         """
-        raise NotImplementedError("M1")
+        self.forecast = list(forecast)
+        self.archive = list(forecast if archive is None else archive)
+        self.calls = 0
 
     def fetch_weather(self, lat: float, lon: float, days: int = 7) -> list[DailyWeather]:
         """Return the first ``days`` entries of the stored forecast.
@@ -52,7 +53,8 @@ class FakeWeatherProvider:
         Returns:
             The requested slice of the stored forecast.
         """
-        raise NotImplementedError("M1")
+        self.calls += 1
+        return self.forecast[:days]
 
     def fetch_archive(
         self, lat: float, lon: float, start: dt.date, end: dt.date
@@ -68,7 +70,8 @@ class FakeWeatherProvider:
         Returns:
             Stored days between ``start`` and ``end``.
         """
-        raise NotImplementedError("M1")
+        self.calls += 1
+        return [day for day in self.archive if start <= day.date <= end]
 
 
 class FakeSoilProvider:
@@ -83,7 +86,8 @@ class FakeSoilProvider:
         Args:
             profile: The profile every call returns.
         """
-        raise NotImplementedError("M1")
+        self.profile = profile
+        self.calls = 0
 
     def fetch_soil(self, lat: float, lon: float) -> SoilProfile:
         """Return the stored profile.
@@ -95,4 +99,5 @@ class FakeSoilProvider:
         Returns:
             The stored profile.
         """
-        raise NotImplementedError("M1")
+        self.calls += 1
+        return self.profile
