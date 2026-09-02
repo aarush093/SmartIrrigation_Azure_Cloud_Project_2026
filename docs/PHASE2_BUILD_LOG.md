@@ -252,3 +252,32 @@ Collected from the plan so they are not lost between milestones. Each becomes a
   (Section 16).
 - Native-speaker check of every non-English script master (Section 17.4).
 
+### M0 outcome
+
+Scaffolding complete and verified. `ruff check`, `ruff format --check`,
+`mypy --strict` and 29 unit tests pass locally and in CI, on Python 3.11 and
+3.12, with the gitleaks secret scan and the engine-purity check green.
+
+Three engineering decisions taken during the milestone, recorded because they
+depart from the letter of the build brief:
+
+1. **`pyyaml` is a fourth engine dependency.** The brief names numpy, pydantic
+   and httpx only, but also mandates that every agronomic constant lives in
+   `params/*.yaml` and every farmer-facing string in `scripts/*.yaml`. Reading
+   YAML requires a YAML parser. `pyyaml` is small, pure-Python and ubiquitous, so
+   it does not breach the dependency-light intent.
+2. **mypy's `python_version` is not pinned to 3.11.** numpy 2.5 ships stubs using
+   the Python 3.12 `type` statement, which mypy rejects when asked to target
+   3.11, so pinning fails on a dependency rather than on project code. mypy now
+   follows the interpreter, the CI lint job runs on 3.12, and 3.11 runtime
+   support is proved by the pytest matrix instead. `ruff` still targets `py311`.
+3. **`.gitattributes` added.** Not requested, but the team develops on Windows
+   while CI runs on Linux, and without line-ending normalisation the first
+   cross-platform edit produces a whole-file diff that hides the real change.
+
+The engine is currently typed stubs raising `NotImplementedError`, each naming
+its milestone and citing the FAO-56 equation or table it will implement. This is
+deliberate: it fixes the public API before behaviour exists, so the scheduler,
+the Functions layer and both teammate handoff packages can be written against a
+contract that is already enforced by test.
+
