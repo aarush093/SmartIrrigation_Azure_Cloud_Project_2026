@@ -323,3 +323,82 @@ reports n, MAE, RMSE, bias and the fraction of station-days within the 0.2 mm/da
 tolerance. It is marked `integration`, excluded from CI, and run on demand with
 `make validate`.
 
+### M1 outcome
+
+The FAO-56 engine is implemented and tested: 209 unit tests, `ruff`,
+`ruff format` and `mypy --strict` clean, no network in the default suite.
+
+**Pump worked example reproduced exactly.** Every intermediate in plan Section 6
+is asserted independently, so each number is defensible on its own rather than
+only in aggregate: Ea 0.65, gross depth 38.46 mm, discharge 380.2 L/min, volume
+155,654 L, running time 409 minutes.
+
+#### Three engineering findings
+
+**F1 — a no-op density adjustment was removed from the pedotransfer.** The first
+draft of `saxton_rawls` scaled field capacity by the ratio of a "normal" bulk
+density to the measured one, but derived that normal density *from* the measured
+density, making the ratio identically 1.0 at every input. It would have appeared
+in the code, in the parameter file and in review as an implemented correction
+while doing nothing at all. The correct adjustment needs Saxton and Rawls
+equations 3 to 5, which could not be reproduced reliably here, so the adjustment
+was removed and its absence documented in the module docstring rather than
+faked. Carried as `TODO [VERIFY]`.
+
+**F2 — `pump_minutes` was split in two.** The build brief asked for a domain
+error when a run exceeds a configurable ceiling, defaulting to 720 minutes. That
+alone would have made the plan's own 45 mm case uncomputable: it needs about 737
+minutes, which is precisely the situation the scheduler exists to handle by
+filling one window and carrying the remainder. `required_pump_minutes` now
+returns the unguarded requirement for the scheduler, and `pump_minutes` enforces
+the ceiling for anything that becomes an instruction to a farmer. Both are
+tested.
+
+**F3 — Objective 2 is not met, and the measured number is reported.** See below.
+
+#### Objective 2 status: NOT MET
+
+`tests/validation/et0_crosscheck.py`, run 2 September 2026 over calendar year
+2025 at the three pilot districts:
+
+| Site | n | MAE | RMSE | Bias | Within 0.2 mm/day |
+|---|---:|---:|---:|---:|---:|
+| Vellore TN | 365 | 0.297 | 0.366 | +0.205 | 37.3% |
+| Beed MH | 365 | 0.308 | 0.350 | -0.013 | 28.8% |
+| Ludhiana PB | 365 | 0.232 | 0.276 | +0.004 | 43.8% |
+| **OVERALL** | **1095** | **0.279** | **0.333** | **+0.065** | **36.6%** |
+
+The criterion is ET0 within 0.2 mm/day. Measured MAE is 0.279 mm/day. The
+station-day count is met at 1,095 against a required 365. The test asserts the
+criterion and therefore fails; the tolerance has not been widened.
+
+**A real bug was found and fixed by this run.** The first execution gave MAE
+0.972 mm/day with a bias of +0.967, an almost pure systematic overestimate. The
+cause was the validation harness requesting `wind_speed_10m_max` where FAO-56
+equation 6 takes the daily *mean* wind speed, which inflated the aerodynamic term
+on every day of every site. Correcting to `wind_speed_10m_mean` moved MAE to
+0.279 and bias to +0.065. The defect was in the harness, not in
+`penman_monteith`; had the run not been performed, the engine would have looked
+correct and the harness would have shipped with a 0.97 mm/day error in it.
+
+The residual is scatter rather than bias: Beed and Ludhiana are unbiased to
+within 0.02 mm/day. The most likely cause is methodological rather than an error
+— Open-Meteo computes ET0 hourly and sums to a daily total, while this
+implementation works from daily aggregates, and FAO-56 sanctions both without
+their agreeing to 0.2 mm/day. Vellore's residual +0.205 mm/day bias is not yet
+explained.
+
+Three routes are recorded in the module docstring for decision before Review 2:
+compare against a reference computed the same way from daily aggregates, which is
+the more plausible reading of the Objective 2 wording; implement the hourly time
+step of FAO-56 equation 53 and sum; or report Objective 2 as partially met with
+0.279 mm/day and zero bias against an independent implementation. Whichever is
+chosen is to be reported as measured.
+
+#### Deferred to later milestones
+
+- `params/crops.yaml` remains `verified: false`. A test asserts that flag, so the
+  suite fails if the file claims verification it has not received.
+- Farmer-facing script masters (`scripts/{hi,en,ta}.yaml`) are M3.
+- The scheduler consumes `required_pump_minutes` and `MoistureForecaster` in M2.
+
