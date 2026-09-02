@@ -12,16 +12,16 @@ Two operational constraints, both from ``dataset/README.md``:
    for the life of the project and the result is cached permanently.
 
 SoilGrids returns values in conventional integer units that must be rescaled:
-texture fractions arrive in g/kg, organic carbon in dg/kg and bulk density in
-cg/cm3. Getting this wrong silently produces a plausible but wrong available
-water, so the conversion factors are named constants and unit-tested.
+texture fractions in g/kg, organic carbon in dg/kg, bulk density in cg/cm3.
+Getting this wrong silently produces a plausible but wrong available water, so
+the conversion factors are named constants and unit-tested.
 
 Endpoint: https://rest.isric.org/soilgrids/v2.0/properties/query
-
-Implemented in M1.
 """
 
 from __future__ import annotations
+
+from typing import Any
 
 import httpx
 
@@ -36,7 +36,19 @@ DEPTH_INTERVALS = ("0-5cm", "5-15cm", "15-30cm")
 
 # Thickness of each interval, used as the depth weighting. Sums to the 30 cm
 # root zone the engine models.
-DEPTH_WEIGHTS_CM = (5.0, 10.0, 15.0)
+DEPTH_WEIGHTS_CM: dict[str, float] = {"0-5cm": 5.0, "5-15cm": 10.0, "15-30cm": 15.0}
+
+# SoilGrids conventional units to engine units.
+#   sand, silt, clay  g/kg    -> mass fraction 0 to 1
+#   soc               dg/kg   -> mass fraction 0 to 1
+#   bdod              cg/cm3  -> g/cm3
+UNIT_DIVISORS: dict[str, float] = {
+    "sand": 1000.0,
+    "silt": 1000.0,
+    "clay": 1000.0,
+    "soc": 10000.0,
+    "bdod": 100.0,
+}
 
 
 class SoilGridsProvider:
@@ -58,7 +70,8 @@ class SoilGridsProvider:
             timeout_s: Per-request timeout, seconds. Higher than the weather
                 provider's because SoilGrids point queries are slower.
         """
-        raise NotImplementedError("M1")
+        self._client = client
+        self.timeout_s = timeout_s
 
     def fetch_soil(self, lat: float, lon: float) -> SoilProfile:
         """Fetch and depth-weight the 0 to 30 cm soil profile for a point.
@@ -75,7 +88,75 @@ class SoilGridsProvider:
             httpx.HTTPError: On transport failure or a non-success status.
             ValueError: If the response omits a requested property or depth.
         """
-        raise NotImplementedError("M1")
+        # Repeated keys, so a list of pairs rather than a mapping: SoilGrids
+        # expects one property= and one depth= per requested layer.
+        params: list[tuple[str, str | int | float | bool | None]] = [
+            ("lat", lat),
+            ("lon", lon),
+            ("value", "mean"),
+        ]
+        params += [("property", p) for p in PROPERTIES]
+        params += [("depth", d) for d in DEPTH_INTERVALS]
+
+        if self._client is not None:
+            response = self._client.get(SOILGRIDS_URL, params=params, timeout=self.timeout_s)
+        else:
+            with httpx.Client(timeout=self.timeout_s) as client:
+                response = client.get(SOILGRIDS_URL, params=params)
+        response.raise_for_status()
+
+        values = _depth_weighted_means(response.json())
+        return SoilProfile(
+            sand=values["sand"],
+            silt=values["silt"],
+            clay=values["clay"],
+            organic_carbon=values["soc"],
+            bulk_density=values["bdod"],
+            latitude=lat,
+            longitude=lon,
+        )
+
+
+def _depth_weighted_means(body: dict[str, Any]) -> dict[str, float]:
+    """Reduce the SoilGrids layer response to one depth-weighted value per property.
+
+    Weights are the thickness of each depth interval, so the 15-30 cm layer
+    counts three times as much as the 0-5 cm layer. Depths that came back empty
+    are skipped and the weights renormalised over what did arrive, rather than
+    being treated as zero.
+    """
+    layers = body.get("properties", {}).get("layers")
+    if not layers:
+        msg = "SoilGrids response contains no layers"
+        raise ValueError(msg)
+
+    results: dict[str, float] = {}
+    for layer in layers:
+        name = layer.get("name")
+        if name not in PROPERTIES:
+            continue
+
+        weighted_sum = 0.0
+        total_weight = 0.0
+        for depth in layer.get("depths", []):
+            label = depth.get("label")
+            mean = depth.get("values", {}).get("mean")
+            if label not in DEPTH_WEIGHTS_CM or mean is None:
+                continue
+            weight = DEPTH_WEIGHTS_CM[label]
+            weighted_sum += float(mean) * weight
+            total_weight += weight
+
+        if total_weight == 0.0:
+            msg = f"SoilGrids returned no usable depth for property {name!r}"
+            raise ValueError(msg)
+        results[name] = (weighted_sum / total_weight) / UNIT_DIVISORS[name]
+
+    missing = [p for p in PROPERTIES if p not in results]
+    if missing:
+        msg = f"SoilGrids response is missing properties: {', '.join(missing)}"
+        raise ValueError(msg)
+    return results
 
 
 def fetch_soil(lat: float, lon: float) -> SoilProfile:
@@ -88,4 +169,4 @@ def fetch_soil(lat: float, lon: float) -> SoilProfile:
     Returns:
         The depth-weighted 0 to 30 cm profile.
     """
-    raise NotImplementedError("M1")
+    return SoilGridsProvider().fetch_soil(lat, lon)

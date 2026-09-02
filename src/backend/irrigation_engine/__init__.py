@@ -16,7 +16,12 @@ Specification: ``docs/PHASE2_NOVELTY_AND_PLAN.md``. Standards: ``CLAUDE.md``.
 """
 
 from irrigation_engine.balance import WaterBalance, effective_rainfall, scs_runoff
-from irrigation_engine.crops import adjust_depletion_fraction, available_crops, crop_calendar
+from irrigation_engine.crops import (
+    adjust_depletion_fraction,
+    available_crops,
+    crop_calendar,
+    growing_period_days,
+)
 from irrigation_engine.et0 import penman_monteith
 from irrigation_engine.forecasting import KcEt0Forecaster, MoistureForecaster
 from irrigation_engine.models import (
@@ -42,8 +47,19 @@ from irrigation_engine.providers import (
     fetch_soil,
     fetch_weather,
 )
-from irrigation_engine.pump import gross_depth_mm, pump_discharge_lpm, pump_minutes
-from irrigation_engine.soil import saxton_rawls, total_available_water
+from irrigation_engine.pump import (
+    PumpRunTooLongError,
+    gross_depth_mm,
+    pump_discharge_l_per_min,
+    pump_minutes,
+    required_pump_minutes,
+    resolve_efficiency,
+)
+from irrigation_engine.soil import (
+    readily_available_water,
+    saxton_rawls,
+    total_available_water,
+)
 
 __version__ = "0.1.0"
 
@@ -75,7 +91,9 @@ __all__ = [  # noqa: RUF022
     "adjust_depletion_fraction",
     "available_crops",
     "crop_calendar",
+    "growing_period_days",
     "penman_monteith",
+    "readily_available_water",
     "saxton_rawls",
     "total_available_water",
     # Water balance
@@ -83,9 +101,12 @@ __all__ = [  # noqa: RUF022
     "effective_rainfall",
     "scs_runoff",
     # Pump conversion
+    "PumpRunTooLongError",
     "gross_depth_mm",
-    "pump_discharge_lpm",
+    "pump_discharge_l_per_min",
     "pump_minutes",
+    "required_pump_minutes",
+    "resolve_efficiency",
     # Moisture forecasting interface
     "KcEt0Forecaster",
     "MoistureForecaster",
