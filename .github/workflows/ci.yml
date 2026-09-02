@@ -1,0 +1,115 @@
+name: CI
+
+# Runs lint and unit tests on every push to a feature branch or to develop, and
+# on every pull request. Objective 5 requires zero secrets in the repository, so
+# a secret scan runs here too and is a hard failure.
+
+on:
+  push:
+    branches:
+      - "feature/**"
+      - develop
+  pull_request:
+    branches:
+      - develop
+      - main
+  workflow_dispatch:
+
+# A new push to the same branch cancels the previous run rather than queueing.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+env:
+  PYTHON_VERSION: "3.11"
+
+jobs:
+  lint:
+    name: Lint (ruff, mypy --strict)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      # Lint runs on 3.12 because numpy's stubs use 3.12 syntax that mypy will not
+      # parse under a 3.11 target. Runtime support for 3.11 is proved by the test
+      # matrix below, which is what the requires-python floor actually promises.
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: pyproject.toml
+
+      - name: Install
+        run: |
+          python -m pip install --upgrade pip
+          pip install -e ".[dev]"
+
+      - name: ruff check
+        run: ruff check --output-format=github .
+
+      - name: ruff format
+        run: ruff format --check .
+
+      - name: mypy --strict
+        run: mypy
+
+  test:
+    name: Unit tests (Python ${{ matrix.python-version }})
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: ["3.11", "3.12"]
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+          cache: pip
+          cache-dependency-path: pyproject.toml
+
+      - name: Install
+        run: |
+          python -m pip install --upgrade pip
+          pip install -e ".[dev]"
+
+      # Integration tests are deselected by pyproject's addopts, so this job
+      # never reaches Open-Meteo, SoilGrids or NASA POWER. A unit test that
+      # opens a socket fails on the guard in tests/conftest.py.
+      - name: pytest
+        run: pytest --cov --cov-report=term-missing
+
+  secrets:
+    name: Secret scan
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          # gitleaks needs history to scan commits, not just the tree.
+          fetch-depth: 0
+
+      - name: gitleaks
+        uses: gitleaks/gitleaks-action@v2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  engine-purity:
+    name: Engine imports no Azure SDK
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      # The engine must stay a pure library so the FAO-56 logic is reviewable
+      # and testable without cloud credentials. Enforced here as well as by the
+      # unit test, so that the rule fails the build even if the test is removed.
+      - name: Check for Azure imports under the engine
+        run: |
+          if grep -rnE '^\s*(import azure|from azure)' src/backend/irrigation_engine/; then
+            echo "::error::src/backend/irrigation_engine must not import the Azure SDK. See CLAUDE.md section 4."
+            exit 1
+          fi
+          echo "OK: no Azure imports in the engine."
