@@ -26,7 +26,7 @@ PIP    := $(BIN)/pip
 HANDOFF_FRONTEND := handoff/student1_frontend
 HANDOFF_AI       := handoff/student3_ai_model
 
-.PHONY: help setup test lint format demo sim validate validate-hourly sensitivity func-start deploy-plan sync-handoff clean
+.PHONY: help setup test lint format demo sim validate validate-hourly validate-inputs sensitivity func-start deploy-plan sync-handoff clean
 
 help:  ## Show the available targets
 	@grep -hE '^[a-zA-Z_-]+:.*?## ' $(MAKEFILE_LIST) \
@@ -50,6 +50,9 @@ validate:  ## Objective 2 ET0 cross-check against Open-Meteo. Hits the live API.
 
 validate-hourly:  ## Settle the hourly-vs-daily ET0 hypothesis. Hits the live API.
 	$(BIN)/pytest tests/validation/et0_hourly_hypothesis.py -m integration -s
+
+validate-inputs:  ## Settle input-dataset vs methodology for ET0. Hits Open-Meteo and NASA POWER.
+	$(BIN)/pytest tests/validation/et0_input_dataset.py -m integration -s
 
 sensitivity:  ## Report the ET0 uncertainty budget in pump minutes. No network.
 	$(BIN)/pytest tests/validation/et0_sensitivity.py -m integration -s

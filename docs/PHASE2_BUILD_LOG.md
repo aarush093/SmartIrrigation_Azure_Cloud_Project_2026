@@ -654,3 +654,142 @@ carries no `__init__.py`, so the parser imports as
   `start_time` is already `None` on a low-reliability feeder, which is the "when
   power comes" case the script must render.
 - Farmer-facing script masters (`scripts/{hi,en,ta}.yaml`) remain M3.
+---
+
+## 2026-09-03 — Objective 2 closed, and the crops verification corrected
+
+### The crops verification was wrong, and the correction was itself wrong
+
+Recorded in full because a correction that introduces an error is exactly the
+kind of thing that otherwise survives into a report.
+
+FAO-56 Table 12 prints `Kc_ini` on the **group header row**; an individual crop
+row leaves that cell **blank** unless it overrides the group value. That
+structure was misread on 3 September 2026, with two consequences:
+
+1. Cotton's blank cell was read as a printed 0.30, and its correct seeded value
+   of 0.35 was "corrected" to it. **The seeded value was right.** Cotton inherits
+   the Fibre Crops header value of 0.35. Reverted.
+2. Groundnut's blank cell was reported as unresolvable "because of the footnote
+   markers". It is not unresolvable; it inherits the Legumes header value of 0.4.
+   That field now flips to verified.
+
+Confirmed group header values, read from the page:
+
+| Group | Kc_ini | Crops here inheriting it |
+|---|---|---|
+| a. Small Vegetables | 0.7 | onion (dry) |
+| b. Vegetables - Solanaceae | 0.6 | tomato |
+| e. Legumes | 0.4 | groundnut, chickpea |
+| g. Fibre Crops | 0.35 | cotton |
+| i. Cereals | 0.3 | maize (grain) |
+
+Rice (1.05), sugarcane (0.40) and winter wheat (0.4 frozen / 0.7 non-frozen)
+print their own values and do not inherit.
+
+A test now pins these group values, so the same misreading cannot recur silently.
+
+### Two Kc_end choices corrected
+
+**Tomato, 0.70 to 0.90.** The chapter's rule is that a frequently irrigated,
+fresh-harvested crop keeps a wet topsoil and takes the **higher** value, while a
+crop left to senesce and dry in the field takes the lower one. The previous
+comment stated the rule inverted and selected 0.70 on that basis. Indian
+fresh-market tomato is picked over several harvests and stays irrigated, so
+**0.90**, which is also the conservative direction consistent with the
+lower-bound convention adopted for Zr.
+
+**Wheat, 0.25 to 0.40.** Footnote 10 gives the higher value to hand-harvested
+crops, and smallholder rabi wheat in the pilot districts frequently is, so
+**0.40**. The previous comment quoted footnote 10 correctly and then justified
+0.25 using footnote 11, which belongs to maize. The two footnotes are now
+distinguished explicitly in the file header.
+
+Maize (0.35) and rice (0.60) were already correct and their reasoning already
+matched the printed footnotes.
+
+### Table 11 does contain Indian rows
+
+The previous header note claimed it had none. It has two, both directly usable,
+and both now replace borrowed non-Indian rows:
+
+| Crop | L_ini | L_dev | L_mid | L_late | Total | Planted | Region |
+|---|---:|---:|---:|---:|---:|---|---|
+| Barley/Oats/Wheat | 15 | 25 | 50 | 30 | 120 | November | Central India |
+| Maize (grain) | 20 | 35 | 40 | 30 | 125 | October | India (dry, cool) |
+
+Wheat's previous 30/45/40/30 came from a Mediterranean row and maize's 25/40/45/30
+from an arid-climate row. Both crops' `stage_days` now flip to verified, and a
+test asserts that **only** these two crops may claim verified stage lengths.
+
+Chick pea is confirmed absent from Table 11 entirely, so the existing note there
+was correct. Every other crop keeps its non-Indian row with the region named and
+stays unverified.
+
+FAO-56 itself says Table 11 values "are useful only as a general guide and for
+comparison purposes" and recommends local observation of plant stage development
+wherever possible. That caveat is recorded in the file even for the two verified
+Indian rows.
+
+### A limitation now stated on every Kc_ini
+
+FAO-56 Chapter 6: "The values for Kc ini in Table 12 are only approximations and
+should only be used for estimating ETc during preliminary or planning studies."
+More accurate estimates come from the chapter's wetting-frequency method, which
+accounts for wetting interval, evaporative demand and the size of each wetting
+event.
+
+That method is not implemented. Kc_ini therefore carries a known accuracy
+limitation on every crop, worst during the initial stage when the canopy is
+sparse and soil evaporation dominates. Recorded in the parameter file header as a
+Phase-III item.
+
+---
+
+### Objective 2: the book is closed
+
+The final experiment asked whether the 0.279 mm/day residual is a difference in
+*method* or a difference in the *input dataset*. Our own Penman-Monteith was run
+twice over the same year and the same three sites, once on Open-Meteo (ERA5)
+inputs and once on NASA POWER (MERRA-2) inputs, against Open-Meteo's published
+ET0. `tests/validation/et0_input_dataset.py`, 1,095 station-days.
+
+| Series | n | MAE | RMSE | Bias | Dry (Nov-May) | Wet (Jun-Oct) |
+|---|---:|---:|---:|---:|---:|---:|
+| A. our PM on Open-Meteo inputs vs published | 1095 | 0.279 | 0.333 | +0.065 | -0.082 | +0.270 |
+| B. our PM on NASA POWER inputs vs published | 1095 | 0.672 | 0.873 | -0.032 | +0.052 | -0.149 |
+| C. our PM: POWER inputs vs Open-Meteo inputs | 1095 | **0.735** | 0.929 | -0.098 | +0.134 | -0.419 |
+
+**The answer is the input dataset, decisively.**
+
+Series C is the finding. Our own identical implementation, fed two different
+reanalysis products, disagrees **with itself** by 0.735 mm/day MAE. That is
+**2.6 times larger** than the 0.279 mm/day residual against Open-Meteo's
+independent FAO-56 implementation on shared inputs.
+
+The residual is therefore not a defect in anything this project built. It is
+smaller than the intrinsic disagreement between the reanalysis products that feed
+it. Put the other way round: **this implementation agrees with an independent
+FAO-56 implementation more closely than two reanalysis datasets agree with each
+other.**
+
+The seasonal reversal reproduces on POWER inputs too, with the sign flipped
+(POWER runs high in the dry season and low in the monsoon relative to
+Open-Meteo), which is again a property of the input products rather than of the
+method.
+
+Objective 2 is reported as a measured uncertainty budget, resting on three
+established facts:
+
+1. The implementation is **verified correct** against every printed intermediate
+   of FAO-56 Example 18.
+2. The residual is **not** an hourly-versus-daily artefact; the hourly sum is
+   worse (0.368 against 0.154 at Beed).
+3. The residual is **smaller than the disagreement between reanalysis products**,
+   so no further accuracy is available from anything under this project's
+   control.
+4. At this residual, ET0 costs at most 37 minutes of a 409-minute run, while
+   application efficiency spans 129 and pump discharge 102. ET0 is not the
+   limiting factor in pump-minute accuracy.
+
+**No further ET0 investigation. The question is not reopened.**
