@@ -1,0 +1,30 @@
+{
+  "IsEncrypted": false,
+  "Values": {
+    "FUNCTIONS_WORKER_RUNTIME": "python",
+    "AzureWebJobsStorage": "UseDevelopmentStorage=true",
+
+    "_comment_flags": "Every Azure integration is off by default, so the host runs with no cloud resources.",
+    "ACS_ENABLED": "false",
+    "SPEECH_ENABLED": "false",
+
+    "_comment_acs": "Supplied from Key Vault in deployed environments. Never commit real values.",
+    "ACS_CONNECTION_STRING": "",
+    "ACS_CALLER_ID": "",
+    "ACS_CALLBACK_URL": "",
+
+    "_comment_numbers": "All three for the designed vocabulary; only the first for degraded single-number mode.",
+    "MISSEDCALL_NUMBER_WATER_GIVEN": "",
+    "MISSEDCALL_NUMBER_POWER_FAILED": "",
+    "MISSEDCALL_NUMBER_REPEAT": "",
+
+    "_comment_speech": "Voice names come from the script masters, not from here.",
+    "SPEECH_KEY": "",
+    "SPEECH_REGION": "centralindia",
+    "SPEECH_BLOB_BASE_URL": "",
+
+    "_comment_cosmos": "Managed identity in deployed environments; emulator locally.",
+    "COSMOS_ENDPOINT": "",
+    "COSMOS_DATABASE": "irrigation"
+  }
+}
