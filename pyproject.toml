@@ -19,11 +19,18 @@ authors = [{ name = "Aarush Pandit", email = "153858722+aarush093@users.noreply.
 #   pyyaml   reads params/*.yaml and scripts/*.yaml; required because the brief
 #            mandates that every agronomic constant and farmer-facing string
 #            lives in YAML rather than in code
+#   tzdata   the IANA time zone database, Windows only. The team develops on
+#            Windows, which ships no system tz database, so zoneinfo cannot
+#            resolve Asia/Kolkata without it. The scheduler models power windows
+#            as IST-aware datetimes (a 22:00 to 06:00 night feeder crosses
+#            midnight), so this is load-bearing, not convenience. Linux and macOS
+#            use the system database and do not install it.
 dependencies = [
     "numpy>=1.26",
     "pydantic>=2.6",
     "httpx>=0.27",
     "pyyaml>=6.0",
+    "tzdata>=2024.1; sys_platform == 'win32'",
 ]
 
 [project.optional-dependencies]

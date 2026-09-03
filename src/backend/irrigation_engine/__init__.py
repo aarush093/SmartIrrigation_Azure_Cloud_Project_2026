@@ -23,6 +23,11 @@ from irrigation_engine.crops import (
     growing_period_days,
 )
 from irrigation_engine.et0 import penman_monteith
+from irrigation_engine.et0_hourly import (
+    HourlyWeather,
+    daily_from_hourly,
+    penman_monteith_hourly,
+)
 from irrigation_engine.forecasting import KcEt0Forecaster, MoistureForecaster
 from irrigation_engine.models import (
     BucketTest,
@@ -92,7 +97,10 @@ __all__ = [  # noqa: RUF022
     "available_crops",
     "crop_calendar",
     "growing_period_days",
+    "HourlyWeather",
+    "daily_from_hourly",
     "penman_monteith",
+    "penman_monteith_hourly",
     "readily_available_water",
     "saxton_rawls",
     "total_available_water",

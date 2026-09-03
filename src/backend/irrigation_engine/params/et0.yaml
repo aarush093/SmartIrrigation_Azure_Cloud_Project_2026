@@ -18,6 +18,27 @@ combination:
   wind_numerator: 900.0         # for the daily time step; 37 for hourly
   wind_denominator_coeff: 0.34  # bulk surface resistance of the reference crop
 
+# --- Equation 53, the hourly time step -----------------------------------------
+# ET0hr = [0.408 D (Rn - G) + g (37/(Thr+273)) u2 (e0(Thr) - ea)]
+#         / [D + g (1 + 0.34 u2)]
+#
+# The wind coefficient is 37, read from FAO-56 Chapter 4 at
+# https://www.fao.org/4/x0490e/x0490e08.htm. Note that it is NOT 900/24 = 37.5;
+# the paper prints 37. The denominator coefficient 0.34 is unchanged from the
+# daily form.
+#
+# Soil heat flux is no longer negligible at this time step (FAO-56 equations 45
+# and 46, Chapter 3 at https://www.fao.org/4/x0490e/x0490e07.htm):
+#     Ghr = 0.1 Rn  during daylight
+#     Ghr = 0.5 Rn  at night
+hourly:
+  wind_numerator: 37.0
+  soil_heat_flux_daylight: 0.1   # FAO-56 equation 45
+  soil_heat_flux_night: 0.5      # FAO-56 equation 46
+  # Longitude of the centre of the local time zone, degrees west of Greenwich.
+  # IST is UTC+5:30, centred on 82.5 degrees EAST, hence 360 - 82.5.
+  timezone_centre_longitude_west: 277.5
+
 # --- Atmospheric parameters, FAO-56 equations 7 to 13 --------------------------
 atmosphere:
   # Equation 7: P = 101.3 ((293 - 0.0065 z) / 293)^5.26
