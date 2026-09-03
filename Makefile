@@ -26,7 +26,7 @@ PIP    := $(BIN)/pip
 HANDOFF_FRONTEND := handoff/student1_frontend
 HANDOFF_AI       := handoff/student3_ai_model
 
-.PHONY: help setup test lint format demo sim validate validate-hourly validate-inputs sensitivity func-start deploy-plan sync-handoff clean
+.PHONY: help setup test lint format demo demo-offline sim validate validate-hourly validate-inputs sensitivity func-start deploy-plan sync-handoff clean
 
 help:  ## Show the available targets
 	@grep -hE '^[a-zA-Z_-]+:.*?## ' $(MAKEFILE_LIST) \
@@ -81,7 +81,10 @@ sync-handoff:  ## Copy teammate handoff code into src/ for a local end-to-end ru
 	@echo "Reminder: these files are committed by their owners, never from this branch."
 
 demo:  ## Seed three farmers, pull live weather and soil, plan and render the calls
-	$(PYTHON) -m irrigation_engine.devtools.demo
+	$(PYTHON) -m irrigation_engine.devtools.demo --out results
+
+demo-offline:  ## Same as demo but with no network, for a room with bad wifi
+	$(PYTHON) -m irrigation_engine.devtools.demo --offline --out results
 
 sim:  ## Run the four-policy simulation study into results/
 	$(PYTHON) src/ai_model/simulate_policies.py --out results/
