@@ -131,6 +131,7 @@ def _depth_weighted_means(body: dict[str, Any]) -> dict[str, float]:
         raise ValueError(msg)
 
     results: dict[str, float] = {}
+    empty: list[str] = []
     for layer in layers:
         name = layer.get("name")
         if name not in PROPERTIES:
@@ -148,9 +149,23 @@ def _depth_weighted_means(body: dict[str, Any]) -> dict[str, float]:
             total_weight += weight
 
         if total_weight == 0.0:
-            msg = f"SoilGrids returned no usable depth for property {name!r}"
-            raise ValueError(msg)
+            empty.append(str(name))
+            continue
         results[name] = (weighted_sum / total_weight) / UNIT_DIVISORS[name]
+
+    # SoilGrids answers 200 with every value null for a point it has no data
+    # for, which is a different failure from a partial response and deserves a
+    # different message: the caller should fall back to a declared soil type
+    # rather than retry.
+    if len(empty) == len(PROPERTIES):
+        msg = (
+            "SoilGrids has no data at this point: every property returned null. "
+            "Use a declared soil texture instead of retrying."
+        )
+        raise ValueError(msg)
+    if empty:
+        msg = f"SoilGrids returned no usable depth for: {', '.join(sorted(empty))}"
+        raise ValueError(msg)
 
     missing = [p for p in PROPERTIES if p not in results]
     if missing:

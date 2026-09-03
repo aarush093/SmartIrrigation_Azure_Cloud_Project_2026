@@ -28,6 +28,16 @@ from irrigation_engine.et0_hourly import (
     daily_from_hourly,
     penman_monteith_hourly,
 )
+from irrigation_engine.events import (
+    DAY_START_HOUR,
+    EventLog,
+    EventOutcome,
+    MissedCallRouter,
+    NumberMode,
+    StateChange,
+    deduplication_key,
+    operational_date,
+)
 from irrigation_engine.forecasting import KcEt0Forecaster, MoistureForecaster
 from irrigation_engine.models import (
     BucketTest,
@@ -60,10 +70,28 @@ from irrigation_engine.pump import (
     required_pump_minutes,
     resolve_efficiency,
 )
+from irrigation_engine.scripts_render import (
+    CallWindow,
+    call_time_for,
+    render_next_day_question,
+    round_stop_time,
+    should_call,
+    speak_schedule,
+    supported_languages,
+)
 from irrigation_engine.soil import (
     readily_available_water,
     saxton_rawls,
     total_available_water,
+)
+from irrigation_engine.telephony import (
+    CallOutcome,
+    CallResult,
+    FakeSpeech,
+    SimulatedTelephony,
+    SpeechAdapter,
+    SpeechResult,
+    TelephonyAdapter,
 )
 
 __version__ = "0.1.0"
@@ -118,5 +146,30 @@ __all__ = [  # noqa: RUF022
     # Moisture forecasting interface
     "KcEt0Forecaster",
     "MoistureForecaster",
+    # Missed-call state machine, the only sensor this system has
+    "EventLog",
+    "EventOutcome",
+    "MissedCallRouter",
+    "NumberMode",
+    "DAY_START_HOUR",
+    "StateChange",
+    "deduplication_key",
+    "operational_date",
+    # Script rendering: what the farmer actually hears
+    "CallWindow",
+    "call_time_for",
+    "render_next_day_question",
+    "round_stop_time",
+    "should_call",
+    "speak_schedule",
+    "supported_languages",
+    # Telephony and speech, with offline fakes
+    "CallOutcome",
+    "CallResult",
+    "FakeSpeech",
+    "SimulatedTelephony",
+    "SpeechAdapter",
+    "SpeechResult",
+    "TelephonyAdapter",
     "__version__",
 ]
