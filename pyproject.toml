@@ -42,6 +42,12 @@ dev = [
     "ruff>=0.5",
     "mypy>=1.10",
     "types-PyYAML>=6.0",
+    # Present so the Functions app and the FastAPI routes are actually
+    # type-checked and importable in CI, rather than being the one part of the
+    # codebase nothing verifies. They ship to Azure via
+    # src/azure/functions/requirements.txt, not from here.
+    "azure-functions>=1.21",
+    "fastapi>=0.115",
 ]
 
 [tool.setuptools.packages.find]
@@ -118,6 +124,15 @@ exclude = "(^|/)(handoff|\\.venv)/"
 # These ship no type information.
 module = ["azure.*", "respx.*"]
 ignore_missing_imports = true
+
+[[tool.mypy.overrides]]
+# The Azure Functions and FastAPI decorators are untyped upstream, so every
+# trigger and route is reported as "untyped decorator makes function untyped".
+# That is a property of the SDKs, not of this code, and suppressing it here is
+# narrower than relaxing strict mode. The function bodies are still fully
+# checked; only the decorator wrapping is exempt.
+module = ["function_app", "api"]
+disable_error_code = ["untyped-decorator", "misc"]
 
 # ---------------------------------------------------------------------------
 # pytest
