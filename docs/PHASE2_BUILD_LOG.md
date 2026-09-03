@@ -793,3 +793,138 @@ established facts:
    limiting factor in pump-minute accuracy.
 
 **No further ET0 investigation. The question is not reopened.**
+---
+
+## 2026-09-03 — M3, call orchestrator, missed-call state machine and speech
+
+516 tests, `ruff`, `ruff format` and `mypy --strict` clean across 52 source
+files, all five CI jobs green. 199 of those tests are new.
+
+### Item 1 first: the missed-call mechanism was verified before anything was built on it
+
+Full write-up in `docs/ACS_MISSED_CALL_FEASIBILITY.md`. It works: Event Grid
+delivers `Microsoft.Communication.IncomingCall` on ring, `data.from` and
+`data.to` carry the phone numbers **before** any answer, and `Reject` is a
+documented pre-call action in the Python SDK that prevents the call connecting at
+all. The three-number vocabulary is implementable as designed.
+
+**A correction to my own reasoning, recorded because it matters.** The first
+draft of that document treated Microsoft's 30-second cold-start warning as a
+binding constraint and recommended buying always-on compute. That was wrong. The
+warning targets applications that must *answer* the call. This design never
+answers: the success state for a missed call is that the call does not connect.
+On a cold start the `Reject` misses the window, the call rings out, and the Event
+Grid event still arrives and is still recorded. Both paths capture the reading.
+Buying warm compute for a flow that never answers would have been indefensible at
+review, and correctly so.
+
+Four decisions follow, all recorded in that document:
+
+1. **Consumption plan**, one Functions app, `function_app.py` at the deployment
+   root. Cheaper and more defensible.
+2. **Retry generously and dead-letter**, which reverses Microsoft's guidance for
+   `IncomingCall`. They advise two attempts and a one-minute TTL because a late
+   event is useless when you must answer. Here a late event is still a valid
+   field observation and may be the only one that field produces that day, so the
+   subscription gets a TTL in hours, the default attempt count, and a dead-letter
+   destination in Blob Storage.
+3. **A keep-warm timer as comfort, not correctness.** Removing it changes the
+   share of calls rejected inside the ring window, never whether an event is
+   recorded, and
+   `tests/test_events.py::TestIdempotency::test_timing_within_the_day_does_not_change_the_outcome`
+   is the test that holds that line.
+4. **Confirmation is carried on the next call**, not on a new one: "kal aapne
+   bataya tha ki paani de diya". Zero marginal cost, and it gives the farmer a
+   chance to correct us if we logged the wrong thing.
+
+### The operational day, found by a test rather than by inspection
+
+The deduplication key was originally the caller, the number called and the IST
+**calendar** date. A test that replayed an event ninety minutes later failed, and
+the failure was not the test's fault.
+
+A Maharashtra night feeder runs 22:00 to 06:00. A farmer who irrigates on that
+window and rings at 00:30 to confirm is reporting the same irrigation as one who
+rings at 23:30, but the two calls fall on different calendar dates. The second
+would have been accepted as a fresh event and credited the water balance a second
+time, silently under-irrigating the field for the rest of the interval.
+
+The key now uses an **operational date** that rolls over at 06:00 IST, after
+every night window in the pilot districts closes. `deduplication_key` also accepts
+an explicit day, which is exact where the handler already knows which schedule
+the event refers to. Both are tested.
+
+### What the farmer actually hears
+
+Start time and stop time, never a raw duration. "Run the pump for 409 minutes" is
+useless: he cannot convert it and he will be asleep. The stop time rounds to five
+minutes and **always downward**, so a truncated run is never overrun and the pump
+is never asked to draw power that has gone.
+
+Quiet hours are 07:00 to 21:00 IST, tested exhaustively across all 24 possible
+window-opening hours. A 06:00 window gets its call the previous evening and the
+script says "tomorrow morning" rather than "today".
+
+A call happens for IRRIGATE and SKIP and never for WAIT. Enforced by a raise, not
+merely documented: a farmer called on days when nothing is asked of him stops
+listening on the days when something is.
+
+### The accessibility guarantee
+
+`tests/test_scripts.py::TestNoTechnicalUnitsLeak` renders nine schedule states
+across three languages and asserts that nothing a farmer hears contains a
+technical unit, a percent sign or a decimal number, in English or in the target
+language. It also walks every string in every master, so a case added later
+cannot smuggle one in through a branch the rendering tests do not exercise.
+
+**The accessibility claim in the report rests on that class**, which is why it is
+more thorough than its length suggests.
+
+It also caught something the eye missed. Three reason lines asserted a day, "so
+water it today", while the capacity branch schedules into the *next* window, which
+is usually tomorrow. The script would have told the farmer to water today and then
+instructed him for tomorrow morning, two sentences apart. All three lines are now
+day-agnostic in all three languages, and a test holds that.
+
+### Two bugs the demo exposed
+
+**It planned from midnight rather than from the planning instant.** A window that
+had already opened was therefore offered as today's, and the call announced
+"tomorrow morning" about a window that had closed hours earlier. Fixed by passing
+the planning instant to both the window enumeration and the call timing.
+
+**Windows console encoding.** The scripts are Hindi and Tamil; a Windows console
+defaults to a codepage that cannot encode either and crashes on the first print.
+`stdout` is now reconfigured to UTF-8 in the demo entry point.
+
+### SoilGrids: the adapter is right, the data is absent
+
+All three pilot points returned every property null with a 200 status. The
+adapter's unit divisors were confirmed correct against the API's own
+`unit_measure.mapped_units` field: cg/cm3 for bulk density, g/kg for texture,
+dg/kg for organic carbon, exactly as coded.
+
+The error message was misleading, naming whichever property came first in
+iteration order rather than saying that the point has no data at all. Those are
+different failures deserving different responses, and the message now
+distinguishes them. `dataset/README.md` already warned that the ISRIC REST API is
+intermittently unavailable, so the demo falls back to a medium loam and degrades
+rather than failing in front of a reviewer.
+
+`TODO [VERIFY]` whether the three pilot coordinates genuinely lack SoilGrids
+coverage or whether the service was degraded on the day, before the pilot.
+
+### Deviations and deferrals
+
+- `azure-functions` and `fastapi` are now dev dependencies. Without them the
+  Functions app and the FastAPI routes were the one part of the codebase nothing
+  verified. A narrow mypy override exempts only the untyped SDK decorators; the
+  function bodies are fully checked.
+- The Cosmos-backed parts of `daily_plan`, `today` and the farmer lookup are
+  stubs pending the M5 bindings. The planning logic they will call is complete
+  and tested.
+- Azure AI Speech voice names carry `TODO [VERIFY]`: they must be confirmed
+  against the current voice list at build time, since Microsoft retires names and
+  a retired one fails at synthesis rather than at deployment.
+- All three non-English masters carry `TODO [VERIFY native speaker]` and must not
+  reach the field until checked, for register as much as for grammar.
