@@ -137,6 +137,43 @@ def gross_depth_mm(net_depth_mm: float, efficiency: float) -> float:
     return net_depth_mm / efficiency
 
 
+def minutes_for_discharge(
+    net_depth_mm: float,
+    area_m2: float,
+    efficiency: float | IrrigationMethod,
+    discharge_l_per_min: float,
+) -> float:
+    """Running time for a net depth given a discharge already in litres per minute.
+
+    The scheduler holds a discharge as a number, not as a bucket test or a
+    nameplate, because by then it has been resolved once at onboarding. This
+    avoids reconstructing a fake characterisation to satisfy a signature.
+
+    Args:
+        net_depth_mm: Depth that must reach the root zone, mm.
+        area_m2: Field area, m2.
+        efficiency: Application efficiency, or an irrigation method.
+        discharge_l_per_min: Pump discharge, litres per minute.
+
+    Returns:
+        Required running time, minutes, with no ceiling applied.
+
+    Raises:
+        ValueError: If the area or the discharge is not positive, or the net
+            depth is negative.
+    """
+    if area_m2 <= 0.0:
+        msg = f"field area must be positive, got {area_m2} m2"
+        raise ValueError(msg)
+    if discharge_l_per_min <= 0.0:
+        msg = f"pump discharge must be positive, got {discharge_l_per_min} L/min"
+        raise ValueError(msg)
+
+    ea = resolve_efficiency(efficiency)
+    volume_l = gross_depth_mm(net_depth_mm, ea) * area_m2
+    return volume_l / discharge_l_per_min
+
+
 def required_pump_minutes(
     net_depth_mm: float,
     area_m2: float,
