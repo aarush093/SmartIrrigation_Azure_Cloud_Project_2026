@@ -1,25 +1,15 @@
 """Tests for the FAO-56 Penman-Monteith implementation.
 
-**No printed reference value from FAO-56 is asserted here.** No copy of the paper
-was consulted during this build, and a test asserting a fabricated "reference"
-value would be worse than no test: it would look authoritative and would be
-quoted back in the viva. See the ruling in ``docs/PHASE2_BUILD_LOG.md``.
+The primary test is :class:`TestFao56WorkedExample`, which asserts this
+implementation against every printed value of **FAO-56 Example 18**, read from
+the published text at https://www.fao.org/4/x0490e/x0490e08.htm. That example
+establishes that the implementation is *correct*, which is a separate question
+from whether it *agrees with Open-Meteo*; the latter is measured in
+``tests/validation/et0_crosscheck.py``.
 
-TODO [VERIFY] FAO-56 example number and printed value. Replace the bounds tests
-in :class:`TestKnownQuantities` with the worked examples from FAO-56 Chapter 4
-and Annex 2 once a copy is available, citing the example box number in each
-docstring.
-
-What is asserted instead:
-
-* the intermediates against values FAO-56 states in its own text and that can be
-  independently recomputed from the published formula;
-* the sensitivity of ET0 to each driver, in the direction physics requires;
-* physical bounds on the output.
-
-The numeric evidence for Objective 2 is not this file. It is
-``tests/validation/et0_crosscheck.py``, which compares this implementation
-against Open-Meteo's published ET0 over a full year at three Indian locations.
+The remaining tests assert sensitivity in the direction physics requires and
+physical bounds on the output, which is what would catch a sign error or a
+swapped term introduced later.
 """
 
 from __future__ import annotations
@@ -31,6 +21,7 @@ import pytest
 from irrigation_engine.et0 import (
     atmospheric_pressure,
     extraterrestrial_radiation,
+    net_radiation,
     penman_monteith,
     psychrometric_constant,
     saturation_vapour_pressure,
@@ -61,6 +52,125 @@ def vellore_et0(**overrides: float) -> float:
         elevation_m=VELLORE_ELEVATION_M,
         **args,  # type: ignore[arg-type]
     )
+
+
+class TestFao56WorkedExample:
+    """FAO-56 Example 18, "Determination of ETo with daily data".
+
+    Source: FAO Irrigation and Drainage Paper 56, Chapter 4, published at
+    https://www.fao.org/4/x0490e/x0490e08.htm and read directly from that page.
+
+    Uccle (Brussels, Belgium), 50 deg 48 min N, 100 m elevation, 6 July
+    (day of year 187). Tmax 21.5 degC, Tmin 12.3 degC, RHmax 84 percent,
+    RHmin 63 percent, wind 10 km/h measured at 10 m, sunshine 9.25 h.
+
+    Every intermediate the example prints is asserted, not only the final ETo,
+    so that a regression identifies the term that moved. The example derives
+    solar radiation from sunshine hours by the Angstrom formula, which this
+    module does not implement; the printed Rs of 22.07 MJ/m2/day is therefore
+    supplied directly, and the radiation chain from Rs onward is still asserted.
+    """
+
+    LATITUDE = 50 + 48 / 60
+    ELEVATION_M = 100.0
+    DATE = dt.date(2026, 7, 6)
+    TMAX = 21.5
+    TMIN = 12.3
+    RH_MAX = 84.0
+    RH_MIN = 63.0
+    U2 = 2.078
+    RS_MJ = 22.07
+
+    def test_day_of_year_is_187(self) -> None:
+        """The example states day of year 187 for 6 July."""
+        assert self.DATE.timetuple().tm_yday == 187
+
+    def test_atmospheric_pressure_is_100_1_kpa(self) -> None:
+        """FAO-56 Example 18 prints P = 100.1 kPa."""
+        assert atmospheric_pressure(self.ELEVATION_M) == pytest.approx(100.1, abs=0.05)
+
+    def test_psychrometric_constant_is_0_0666(self) -> None:
+        """FAO-56 Example 18 prints gamma = 0.0666 kPa/degC."""
+        gamma = psychrometric_constant(atmospheric_pressure(self.ELEVATION_M))
+        assert gamma == pytest.approx(0.0666, abs=0.0001)
+
+    def test_svp_slope_is_0_122(self) -> None:
+        """FAO-56 Example 18 prints Delta = 0.122 kPa/degC at the mean temperature."""
+        assert svp_slope((self.TMAX + self.TMIN) / 2) == pytest.approx(0.122, abs=0.0005)
+
+    def test_saturation_vapour_pressures_match(self) -> None:
+        """The example prints e0(Tmax) = 2.564 kPa and e0(Tmin) = 1.431 kPa."""
+        assert saturation_vapour_pressure(self.TMAX) == pytest.approx(2.564, abs=0.001)
+        assert saturation_vapour_pressure(self.TMIN) == pytest.approx(1.431, abs=0.001)
+
+    def test_mean_saturation_vapour_pressure_is_1_997(self) -> None:
+        """The example prints es = 1.997 kPa, the mean of the two extremes."""
+        es = (saturation_vapour_pressure(self.TMAX) + saturation_vapour_pressure(self.TMIN)) / 2
+        assert es == pytest.approx(1.997, abs=0.001)
+
+    def test_actual_vapour_pressure_is_1_409(self) -> None:
+        """The example prints ea = 1.409 kPa, from FAO-56 equation 17."""
+        ea = (
+            saturation_vapour_pressure(self.TMIN) * self.RH_MAX / 100.0
+            + saturation_vapour_pressure(self.TMAX) * self.RH_MIN / 100.0
+        ) / 2
+        assert ea == pytest.approx(1.409, abs=0.001)
+
+    def test_extraterrestrial_radiation_is_41_09(self) -> None:
+        """The example prints Ra = 41.09 MJ/m2/day."""
+        ra = extraterrestrial_radiation(self.LATITUDE, self.DATE)
+        assert ra == pytest.approx(41.09, abs=0.02)
+
+    def test_clear_sky_radiation_is_30_90(self) -> None:
+        """The example prints Rso = 30.90 MJ/m2/day, FAO-56 equation 37."""
+        ra = extraterrestrial_radiation(self.LATITUDE, self.DATE)
+        assert (0.75 + 2e-5 * self.ELEVATION_M) * ra == pytest.approx(30.90, abs=0.02)
+
+    def test_net_radiation_is_13_28(self) -> None:
+        """The example prints Rns 17.00, Rnl 3.71 and Rn 13.28 MJ/m2/day.
+
+        This is the strongest single assertion in the module: net radiation
+        exercises the albedo, the clear-sky ratio, the cloudiness factor, the
+        Stefan-Boltzmann term and the humidity correction together.
+        """
+        ea = (
+            saturation_vapour_pressure(self.TMIN) * self.RH_MAX / 100.0
+            + saturation_vapour_pressure(self.TMAX) * self.RH_MIN / 100.0
+        ) / 2
+        ra = extraterrestrial_radiation(self.LATITUDE, self.DATE)
+        rn = net_radiation(
+            solar_radiation_mj=self.RS_MJ,
+            ra_mj=ra,
+            temp_max_c=self.TMAX,
+            temp_min_c=self.TMIN,
+            actual_vapour_pressure_kpa=ea,
+            elevation_m=self.ELEVATION_M,
+        )
+        assert pytest.approx(17.00, abs=0.02) == 0.77 * self.RS_MJ
+        assert 0.77 * self.RS_MJ - rn == pytest.approx(3.71, abs=0.02)
+        assert rn == pytest.approx(13.28, abs=0.02)
+
+    def test_eto_matches_the_printed_value(self) -> None:
+        """FAO-56 Example 18 prints ETo = 3.9 mm/day.
+
+        The paper prints one decimal place, so the tolerance is the half-unit of
+        that precision: this implementation returns 3.88, which is 3.9 as
+        printed. This is the assertion that establishes the implementation is
+        correct, independently of whether it agrees with any other provider.
+        """
+        et0 = penman_monteith(
+            temp_max_c=self.TMAX,
+            temp_min_c=self.TMIN,
+            latitude=self.LATITUDE,
+            date=self.DATE,
+            elevation_m=self.ELEVATION_M,
+            wind_speed_2m=self.U2,
+            relative_humidity_max=self.RH_MAX,
+            relative_humidity_min=self.RH_MIN,
+            solar_radiation_mj=self.RS_MJ,
+        )
+        assert et0 == pytest.approx(3.9, abs=0.05)
+        assert round(et0, 1) == 3.9
 
 
 class TestKnownQuantities:

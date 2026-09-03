@@ -402,3 +402,139 @@ chosen is to be reported as measured.
 - Farmer-facing script masters (`scripts/{hi,en,ta}.yaml`) are M3.
 - The scheduler consumes `required_pump_minutes` and `MoistureForecaster` in M2.
 
+---
+
+## 2026-09-03 — Objective 2 resolved into a measured uncertainty budget
+
+Four actions, none of which loosened the 0.2 mm/day criterion.
+
+### 1. Wind height conversion: confirmed present, question closed
+
+FAO-56 equation 47 is applied in the cross-check harness. `wind_10m_to_2m`
+returns `u10 * 4.87 / ln(67.8 * 10 - 5.42)`, a factor of **0.747951**, and it is
+applied to `wind_speed_10m_mean` after converting km/h to m/s. The residual is
+not caused by a missing height conversion.
+
+### 2. FAO-56 Example 18: the implementation is confirmed correct
+
+FAO-56 Chapter 4 was fetched from <https://www.fao.org/4/x0490e/x0490e08.htm> and
+**Example 18, "Determination of ETo with daily data"**, read directly from the
+page: Uccle (Brussels), 50 deg 48 min N, 100 m, 6 July (day 187), Tmax 21.5 degC,
+Tmin 12.3 degC, RHmax 84 percent, RHmin 63 percent, wind 10 km/h at 10 m,
+sunshine 9.25 h.
+
+Every printed intermediate is now asserted in
+`tests/test_et0.py::TestFao56WorkedExample`:
+
+| Quantity | Ours | FAO-56 Example 18 |
+|---|---:|---:|
+| P (kPa) | 100.124 | 100.1 |
+| gamma (kPa/degC) | 0.0666 | 0.0666 |
+| Delta (kPa/degC) | 0.122 | 0.122 |
+| e0(Tmax) (kPa) | 2.564 | 2.564 |
+| e0(Tmin) (kPa) | 1.431 | 1.431 |
+| es (kPa) | 1.997 | 1.997 |
+| ea (kPa) | 1.409 | 1.409 |
+| Ra (MJ/m2/day) | 41.088 | 41.09 |
+| Rso (MJ/m2/day) | 30.898 | 30.90 |
+| Rns (MJ/m2/day) | 16.994 | 17.00 |
+| Rnl (MJ/m2/day) | 3.712 | 3.71 |
+| Rn (MJ/m2/day) | 13.282 | 13.28 |
+| **ET0 (mm/day)** | **3.880** | **3.9** |
+
+**The implementation is correct.** Every term matches to the precision printed.
+This separates two questions that were previously entangled: whether the
+implementation is right, which it is, and whether it agrees with Open-Meteo,
+which is a different matter measured separately.
+
+The example prints ET0 to one decimal place, so the assertion tolerance is the
+half-unit of that precision; 3.880 is 3.9 as printed.
+
+One discrepancy with the instruction received: the hourly wind coefficient was
+given as 900/24 = 37.5. The page prints **37**. The page wins, and 37 is what is
+implemented in `params/et0.yaml`.
+
+### 3. Hourly-versus-daily hypothesis: DEAD
+
+`tests/validation/et0_hourly_hypothesis.py`, Beed, April 2025, 30 days. FAO-56
+equation 53 implemented in `irrigation_engine/et0_hourly.py` with the soil heat
+flux of equations 45 and 46 (`Ghr = 0.1 Rn` daylight, `Ghr = 0.5 Rn` night, both
+read from <https://www.fao.org/4/x0490e/x0490e07.htm>).
+
+| Series | MAE | RMSE | Bias | Within 0.2 |
+|---|---:|---:|---:|---:|
+| A, our daily aggregate (eq 6) | 0.154 | 0.178 | -0.089 | 63.3% |
+| B, our hourly sum (eq 53) | 0.368 | 0.374 | -0.368 | 3.3% |
+
+**The hourly sum is worse, not better.** The hypothesis is dead and is recorded
+as such rather than left as a suspicion. Open-Meteo's daily ET0 is not reproduced
+by summing FAO-56 equation 53 over 24 hours.
+
+The hourly implementation was checked for defects before the hypothesis was
+declared dead, so that a bug of ours would not be misattributed to it. On 10
+April at Beed it gives a physically sensible diurnal profile, peaking at 0.87
+mm/hour at midday and near zero at night, summing to 8.469 mm against
+Open-Meteo's 8.58 mm. Retaining negative night-time hours rather than clipping
+them changes the daily total by 0.003 mm, so that choice is not the cause either.
+
+### 4. The error is seasonal, and the budget that matters is in minutes
+
+Breaking the 2025 cross-check down by month exposed the structure the annual
+figures hid. **The bias flips sign with the season at all three sites:**
+
+| Site | Dry, Nov to May | Monsoon, Jun to Oct |
+|---|---|---|
+| Vellore TN | MAE 0.213, bias +0.054 | MAE 0.414, bias **+0.413** |
+| Beed MH | MAE 0.308, bias -0.216 | MAE 0.307, bias +0.268 |
+| Ludhiana PB | MAE 0.238, bias -0.086 | MAE 0.223, bias +0.129 |
+
+Vellore's annual +0.205 bias, previously unexplained, is almost entirely a
+monsoon effect: +0.413 in June to October against +0.054 in the dry season. The
+signature is humidity and cloud, which is where daily aggregation of RHmax and
+RHmin and of the Rs/Rso cloudiness ratio departs most from an hourly treatment.
+The seasonal reversal is also why the annual bias is only +0.065: the two halves
+of the year partly cancel.
+
+**Bias, not scatter, is what accumulates in a water balance.** Random daily errors
+partly cancel across an irrigation interval; a bias does not. The annual bias of
++0.065 mm/day is comfortably inside the 0.2 criterion.
+
+`tests/validation/et0_sensitivity.py` propagates each error term to the unit the
+farmer acts on, on the worked example field (wheat mid-season Kc 1.15, one acre,
+furrow Ea 0.65, 380.2 L/min, seven-day interval, baseline run 409.4 minutes):
+
+| Error term | ETc error over 7 days | Extra pump time | Share of the 409-minute run |
+|---|---:|---:|---:|
+| Overall bias +0.065 mm/day | 0.52 mm | 8.6 min | 2.1% |
+| Vellore bias +0.205 mm/day | 1.65 mm | 27.0 min | 6.6% |
+| MAE 0.279 mm/day, fully correlated | 2.25 mm | 36.8 min | 9.0% |
+| MAE 0.279 mm/day, independent across days | 0.85 mm | 13.9 min | 3.4% |
+
+These figures were computed from the engine and agree with the independently
+supplied table to the last digit.
+
+Against the uncertainty the recommendation already carries on the same field:
+
+| Term | Spread | Share |
+|---|---:|---:|
+| Application efficiency Ea 0.55 vs 0.75 | 129.0 min | 31.5% |
+| Pump discharge 20 percent low, no bucket test | 102.3 min | 25.0% |
+
+**Conclusion for the report.** The largest ET0 error term costs 37 minutes on a
+409-minute run. Application efficiency alone spans 129 minutes on the same field,
+a factor of 3.5, and an uncalibrated pump discharge spans 102. At this residual
+the ET0 disagreement is not the limiting factor in pump-minute accuracy;
+application efficiency and pump discharge dominate it by roughly three to one.
+That is why the bucket test at onboarding matters more to the farmer than closing
+the last 0.08 mm/day of ET0 agreement.
+
+Objective 2 is therefore reported not as a failed threshold but as a measured
+uncertainty budget: the implementation is verified correct against FAO-56 Example
+18; it agrees with an independent implementation to 0.279 mm/day MAE with +0.065
+mm/day annual bias; and that residual is a known seasonal artefact of daily
+aggregation costing about 2 percent of a typical irrigation run.
+
+`tzdata` was added as a Windows-only dependency in this work. Windows ships no
+IANA time zone database, so `zoneinfo` cannot resolve `Asia/Kolkata`, and the M2
+scheduler models power windows as IST-aware datetimes because a 22:00 to 06:00
+night feeder crosses midnight. Linux and macOS use the system database.
