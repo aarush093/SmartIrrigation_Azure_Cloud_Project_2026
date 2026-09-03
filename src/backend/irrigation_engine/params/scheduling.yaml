@@ -1,0 +1,44 @@
+# Power-window scheduler constants.
+#
+# Policy defined in docs/PHASE2_NOVELTY_AND_PLAN.md Section 7, as corrected on
+# 3 September 2026.
+
+# --- Feeder reliability -------------------------------------------------------
+# An exponentially weighted estimate of the probability that a scheduled window
+# actually carries power, learned from the farmer's "bijli nahi aayi" missed
+# calls:
+#
+#     r_new = alpha * outcome + (1 - alpha) * r_old
+#
+# where outcome is 0 if a POWER_FAILED event arrived for that window and 1
+# otherwise. There is no other sensor: the missed call IS the measurement.
+reliability:
+  # Weight on the newest observation. At 0.3 a single failure moves a feeder
+  # from 0.80 to 0.56, which crosses the low-reliability threshold immediately.
+  # That is deliberate: it is better to tell a farmer "when power comes" one day
+  # too early than to give him a clock time the feeder will not honour.
+  alpha: 0.3
+  # Starting value for a feeder with no history. Not 1.0: an unproven feeder
+  # should not be trusted as though it had a perfect record.
+  initial: 0.8
+  # Below this the schedule carries no clock time. The call says "when power
+  # comes, run X minutes" instead, and the window duration used to compute
+  # capacity C is scaled by r.
+  low_threshold: 0.6
+
+# --- Scheduling horizon -------------------------------------------------------
+horizon:
+  # Days of forecast the projection to the next window may consume.
+  forecast_days: 7
+  # How long before a window opens the daily call is placed. Plan Section 5.2.
+  call_lead_minutes: 60
+
+# --- Multi-field allocation ---------------------------------------------------
+# Fields sharing one pump compete for the same window. Priority is
+# (D / RAW) * Ky: how far into stress the field is, weighted by how much yield
+# that crop loses per unit of deficit.
+allocation:
+  # Ties are broken on field id so that identical inputs always give an
+  # identical order. Determinism is what makes the property tests and the
+  # two-season simulation reproducible.
+  tie_break: field_id
