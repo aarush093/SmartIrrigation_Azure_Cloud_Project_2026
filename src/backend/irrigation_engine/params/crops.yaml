@@ -1,96 +1,110 @@
 # Crop parameters for the FAO-56 water balance.
 #
 # ============================================================================
-# VERIFICATION STATUS: seeded, not yet checked against the printed sources.
+# VERIFICATION STATUS
 #
-# Every value below was seeded from working knowledge of the cited tables. None
-# has been read off a copy of the source document during this build. Before the
-# Review-2 submission each value must be checked against the printed table and
-# the `verified` flag below flipped, or the value corrected.
+# Kc, Zr and p were checked on 3 September 2026 against the printed FAO-56
+# tables, read from the FAO publication itself:
 #
-# This flag exists because a wrong agronomic constant that looks authoritative is
-# worse than an admitted gap: it survives review and fails in the field.
-# See CLAUDE.md section 4.
+#   Table 11 and Table 12  https://www.fao.org/4/x0490e/x0490e0b.htm  (Chapter 6)
+#   Table 22               https://www.fao.org/4/x0490e/x0490e0e.htm  (Chapter 8)
+#
+# Verification is recorded PER FIELD, not per crop, because a crop can have a
+# confirmed Kc and an unconfirmed Indian stage length. Each crop carries a
+# `verified` block saying exactly which of its fields were read off the printed
+# table. Nothing is marked verified that was not actually checked.
+#
+# Still unverified, and why:
+#
+#   stage_days  FAO-56 Table 11 gives lengths by region and planting date, and
+#               none of its rows is India. The row each value was taken from is
+#               named in the comment, but an Indian sowing window differs, so
+#               these stay false pending ICAR or state agricultural university
+#               packages of practice. Phase-III item.
+#
+#   ky          FAO-33 (Doorenbos and Kassam 1979) and FAO-66 (Steduto et al.
+#               2012) are separate publications and were not reachable in this
+#               session. Ky DOES NOT APPEAR IN FAO-56, so no amount of reading
+#               FAO-56 can confirm it.
 # ============================================================================
-verified: false
 
-# --- Sources, and what each is actually the authority for --------------------
+# True only when every field of every crop below is verified. It is not.
+verified_all: false
+
+# --- Sources, and what each is the authority for ------------------------------
 #
-#   FAO-56  R. G. Allen, L. S. Pereira, D. Raes and M. Smith, "Crop
-#           evapotranspiration", FAO Irrigation and Drainage Paper 56, 1998.
-#           Plan reference R20.
+#   FAO-56  Allen, Pereira, Raes and Smith, FAO Irrigation and Drainage Paper
+#           56, 1998. Plan reference R20.
 #             Table 11  lengths of crop development stages
 #             Table 12  single time-averaged crop coefficients Kc
 #             Table 22  maximum effective rooting depth Zr, depletion fraction p
 #
-#   FAO-33  J. Doorenbos and A. H. Kassam, "Yield response to water", FAO
-#           Irrigation and Drainage Paper 33, 1979. Plan reference R24.
-#             Source of the yield response factor Ky.
+#   FAO-33  Doorenbos and Kassam, FAO Irrigation and Drainage Paper 33, 1979.
+#           Plan reference R24. Source of the yield response factor Ky.
 #
-#   FAO-66  P. Steduto, T. C. Hsiao, E. Fereres and D. Raes, "Crop yield
-#           response to water", FAO Irrigation and Drainage Paper 66, 2012.
-#           Plan reference R25.
-#             Updated stage-wise Ky, superseding FAO-33 where the two differ.
+#   FAO-66  Steduto, Hsiao, Fereres and Raes, FAO Irrigation and Drainage Paper
+#           66, 2012. Plan reference R25. Updated stage-wise Ky.
 #
-# Ky DOES NOT APPEAR IN FAO-56. Citing FAO-56 for it is an error a reviewer who
-# knows the papers will catch. Every Ky entry below carries TODO [VERIFY]
-# because no printed value was confirmed during this build.
+# --- Conventions --------------------------------------------------------------
+# Where Table 22 prints a Zr RANGE, the LOWER bound is taken throughout. A
+# shallower root zone gives a smaller TAW, so the engine irrigates earlier and in
+# smaller doses, which is the conservative direction under a rationed supply.
 #
-# --- Units --------------------------------------------------------------------
-#   stage_days      calendar days
-#   kc              dimensionless
-#   root_depth_m    metres; root_depth_initial_m is depth at emergence
-#   depletion_fraction  dimensionless, before the ETc adjustment
-#   ky              dimensionless
+# Where Table 12 prints a Kc_end RANGE, the endpoint matching the management
+# practice is taken and the choice is stated in the comment. No mid-range value
+# is invented: every figure below is a printed one.
 #
-# --- Stage lengths ------------------------------------------------------------
-# FAO-56 Table 11 gives lengths by region and planting date. Indian sowing
-# windows differ from every tabulated region, so ALL stage lengths below carry
-# TODO [VERIFY] against ICAR and state agricultural university packages of
-# practice, per plan Sections 6 and 15.
+# Units: stage_days in calendar days, kc dimensionless, root_depth_m in metres,
+# depletion_fraction dimensionless, ky dimensionless.
 
 crops:
 
   wheat:
     display_name: Wheat
-    # FAO-56 Table 12, "Winter Wheat". Kc_end 0.25 for harvest at full
-    # senescence; 0.4 where harvested green for fodder.
+    # FAO-56 Table 12, "Winter Wheat". Kc_ini is 0.4 on frozen soils and 0.7 on
+    # non-frozen soils; Indian rabi wheat is non-frozen, so 0.7.
     kc_initial: 0.70
     kc_mid: 1.15
+    # Table 12 prints 0.25-0.4, footnote 10: the higher value is for
+    # hand-harvested crops. 0.25 is harvest after complete field drying.
     kc_end: 0.25
-    # FAO-56 Table 11, winter wheat. TODO [VERIFY] for the north Indian rabi
-    # sowing window (mid-November to December).
+    # FAO-56 Table 11 prints 30/140/40/30 for November, Mediterranean. That is a
+    # 240-day season; Indian rabi wheat runs roughly 120 to 145 days, so the
+    # values below are shortened and remain unverified.
     stage_days:
       initial: 30      # TODO [VERIFY] Indian rabi calendar
       development: 45  # TODO [VERIFY]
       mid: 40          # TODO [VERIFY]
       late: 30         # TODO [VERIFY]
-    # FAO-56 Table 22, winter wheat: Zr 1.5 to 1.8 m, p 0.55.
-    # The lower bound of the range is taken throughout this file: a shallower
-    # root zone yields a smaller TAW, so the engine irrigates earlier and in
-    # smaller doses. That is the conservative direction for a rationed supply.
+    # FAO-56 Table 22, Winter Wheat: Zr 1.5-1.8 m, p 0.55. Lower bound taken.
     root_depth_m: 1.50
     root_depth_initial_m: 0.15
     depletion_fraction: 0.55
-    ky: 1.00  # TODO [VERIFY] FAO-33 Table, winter wheat, whole growing season
+    ky: 1.00  # TODO [VERIFY] FAO-33, winter wheat, whole growing season
+    verified: { kc: true, root_depth: true, depletion_fraction: true, stage_days: false, ky: false }
 
   maize:
     display_name: Maize
-    # FAO-56 Table 12, "Maize, Field (grain) (field corn)". Kc_end 0.35 for
-    # harvest at grain maturity; 0.60 if harvested at high grain moisture.
+    # FAO-56 Table 12, "Maize, Field (grain)".
     kc_initial: 0.30
     kc_mid: 1.20
+    # Table 12 prints 0.60-0.35, footnote 11: the first value is for harvest at
+    # high grain moisture, the second for harvest after complete field drying to
+    # about 18 percent. Indian grain maize is field-dried, so 0.35.
     kc_end: 0.35
+    # FAO-56 Table 11, "25 40 45 30" for December/January, arid climate. Matches
+    # the Indian rabi maize window in length but not in region.
     stage_days:
-      initial: 25      # TODO [VERIFY] Indian kharif calendar
+      initial: 25      # TODO [VERIFY] Indian kharif and rabi calendars differ
       development: 40  # TODO [VERIFY]
       mid: 45          # TODO [VERIFY]
       late: 30         # TODO [VERIFY]
-    # FAO-56 Table 22, maize (grain): Zr 1.0 to 1.7 m, p 0.55.
+    # FAO-56 Table 22, Maize (grain): Zr 1.0-1.7 m, p 0.55. Lower bound taken.
     root_depth_m: 1.00
     root_depth_initial_m: 0.15
     depletion_fraction: 0.55
-    ky: 1.25  # TODO [VERIFY] FAO-33 Table, maize, whole growing season
+    ky: 1.25  # TODO [VERIFY] FAO-33, maize, whole growing season
+    verified: { kc: true, root_depth: true, depletion_fraction: true, stage_days: false, ky: false }
 
   rice:
     display_name: Rice
@@ -98,39 +112,49 @@ crops:
     # surface is open water for much of the initial stage.
     kc_initial: 1.05
     kc_mid: 1.20
-    kc_end: 0.75
+    # Table 12 prints 0.90-0.60. 0.60 is taken: Indian paddy is normally drained
+    # before harvest, and a drained field transpires less than a ponded one.
+    kc_end: 0.60
+    # FAO-56 Table 11, "30 30 60 30" for December/May, tropics and Mediterranean.
     stage_days:
       initial: 30      # TODO [VERIFY] Indian kharif transplanted paddy
       development: 30  # TODO [VERIFY]
       mid: 60          # TODO [VERIFY]
       late: 30         # TODO [VERIFY]
-    # FAO-56 Table 22, rice: Zr 0.5 to 1.0 m, p 0.20.
+    # FAO-56 Table 22, Rice: Zr 0.5-1.0 m, p 0.20. Lower bound taken.
     root_depth_m: 0.50
     root_depth_initial_m: 0.10
     depletion_fraction: 0.20
     ky: 1.09  # TODO [VERIFY] FAO-66, rice; FAO-33 gives a different figure
-    # Rice is normally grown ponded rather than to a depletion trigger. The
-    # water balance below still runs, but a ponded-paddy mode is a Phase-III
-    # item and is recorded in the risk register rather than approximated here.
+    verified: { kc: true, root_depth: true, depletion_fraction: true, stage_days: false, ky: false }
+    # Rice is normally grown ponded rather than to a depletion trigger. The water
+    # balance still runs, but a ponded-paddy mode is a Phase-III item and is
+    # recorded in the risk register rather than approximated here.
     notes: "TODO [VERIFY] ponded paddy management differs from a depletion-triggered balance"
 
   cotton:
     display_name: Cotton
-    # FAO-56 Table 12, "Cotton". Kc_mid 1.15 to 1.20; Kc_end 0.70 for the first
-    # picking, falling to 0.50 by the last.
-    kc_initial: 0.35
+    # FAO-56 Table 12, "Cotton". Corrected on 3 September 2026 from a seeded
+    # 0.35 to the printed 0.30.
+    kc_initial: 0.30
+    # Table 12 prints 1.15-1.20. Lower bound taken.
     kc_mid: 1.15
+    # Table 12 prints 0.70-0.50. 0.70 applies at the first picking, falling
+    # toward 0.50 by the last; the first picking is taken.
     kc_end: 0.70
+    # FAO-56 Table 11, "30 50 60 55" for March to May, Egypt, Pakistan and
+    # California.
     stage_days:
       initial: 30      # TODO [VERIFY] Maharashtra kharif cotton
       development: 50  # TODO [VERIFY]
       mid: 60          # TODO [VERIFY]
       late: 55         # TODO [VERIFY]
-    # FAO-56 Table 22, cotton: Zr 1.0 to 1.7 m, p 0.65.
+    # FAO-56 Table 22, Cotton: Zr 1.0-1.7 m, p 0.65. Lower bound taken.
     root_depth_m: 1.00
     root_depth_initial_m: 0.15
     depletion_fraction: 0.65
-    ky: 0.85  # TODO [VERIFY] FAO-33 Table, cotton, whole growing season
+    ky: 0.85  # TODO [VERIFY] FAO-33, cotton, whole growing season
+    verified: { kc: true, root_depth: true, depletion_fraction: true, stage_days: false, ky: false }
 
   sugarcane:
     display_name: Sugarcane
@@ -138,51 +162,61 @@ crops:
     kc_initial: 0.40
     kc_mid: 1.25
     kc_end: 0.75
+    # FAO-56 Table 11, "35 60 190 120" for low latitudes, virgin cane.
     stage_days:
       initial: 35       # TODO [VERIFY] Indian adsali or suru planting
       development: 60   # TODO [VERIFY]
       mid: 190          # TODO [VERIFY]
       late: 120         # TODO [VERIFY]
-    # FAO-56 Table 22, sugarcane: Zr 1.2 to 2.0 m, p 0.65.
+    # FAO-56 Table 22, Sugar Cane: Zr 1.2-2.0 m, p 0.65. Lower bound taken.
     root_depth_m: 1.20
     root_depth_initial_m: 0.20
     depletion_fraction: 0.65
-    ky: 1.20  # TODO [VERIFY] FAO-33 Table, sugarcane, whole growing season
+    ky: 1.20  # TODO [VERIFY] FAO-33, sugarcane, whole growing season
+    verified: { kc: true, root_depth: true, depletion_fraction: true, stage_days: false, ky: false }
 
   groundnut:
     display_name: Groundnut
-    # FAO-56 Table 12, "Groundnut (Peanut)".
-    kc_initial: 0.40
+    # FAO-56 Table 12, "Groundnut (Peanut)". Kc_mid 1.15 and Kc_end 0.60 were
+    # read from the printed table; Kc_ini could not be resolved from the page
+    # because of the footnote markers, so it stays unverified.
+    kc_initial: 0.40  # TODO [VERIFY] FAO-56 Table 12 Kc_ini not resolved
     kc_mid: 1.15
     kc_end: 0.60
+    # FAO-56 Table 11, "25 35 45 25" for the dry season, West Africa.
     stage_days:
       initial: 25      # TODO [VERIFY] Indian kharif groundnut
       development: 35  # TODO [VERIFY]
       mid: 45          # TODO [VERIFY]
       late: 25         # TODO [VERIFY]
-    # FAO-56 Table 22, groundnut: Zr 0.5 to 1.0 m, p 0.50.
+    # FAO-56 Table 22, Groundnut (Peanut): Zr 0.5-1.0 m, p 0.50. Lower bound.
     root_depth_m: 0.50
     root_depth_initial_m: 0.10
     depletion_fraction: 0.50
-    ky: 0.70  # TODO [VERIFY] FAO-33 Table, groundnut, whole growing season
+    ky: 0.70  # TODO [VERIFY] FAO-33, groundnut, whole growing season
+    verified: { kc: false, root_depth: true, depletion_fraction: true, stage_days: false, ky: false }
 
   tomato:
     display_name: Tomato
-    # FAO-56 Table 12, "Tomato". Kc_end 0.70 to 0.90 depending on whether the
-    # crop is left to senesce or picked green.
+    # FAO-56 Table 12, "Tomato".
     kc_initial: 0.60
     kc_mid: 1.15
-    kc_end: 0.80
+    # Table 12 prints 0.70-0.90. 0.70 is taken, for a crop left to senesce
+    # before harvest; 0.90 applies where it is picked green. Corrected on
+    # 3 September 2026 from a seeded 0.80, which is not a printed value.
+    kc_end: 0.70
+    # FAO-56 Table 11, "30 40 40 25" for January, arid region.
     stage_days:
       initial: 30      # TODO [VERIFY] Indian transplanted tomato
       development: 40  # TODO [VERIFY]
       mid: 40          # TODO [VERIFY]
       late: 25         # TODO [VERIFY]
-    # FAO-56 Table 22, tomato: Zr 0.7 to 1.5 m, p 0.40.
+    # FAO-56 Table 22, Tomato: Zr 0.7-1.5 m, p 0.40. Lower bound taken.
     root_depth_m: 0.70
     root_depth_initial_m: 0.10
     depletion_fraction: 0.40
-    ky: 1.05  # TODO [VERIFY] FAO-33 Table, tomato, whole growing season
+    ky: 1.05  # TODO [VERIFY] FAO-33, tomato, whole growing season
+    verified: { kc: true, root_depth: true, depletion_fraction: true, stage_days: false, ky: false }
 
   onion:
     display_name: Onion
@@ -190,18 +224,20 @@ crops:
     kc_initial: 0.70
     kc_mid: 1.05
     kc_end: 0.75
+    # FAO-56 Table 11, "15 25 70 40" for April, Mediterranean.
     stage_days:
       initial: 15      # TODO [VERIFY] Indian rabi onion
       development: 25  # TODO [VERIFY]
       mid: 70          # TODO [VERIFY]
       late: 40         # TODO [VERIFY]
-    # FAO-56 Table 22, onion (dry): Zr 0.3 to 0.6 m, p 0.30. The shallowest
-    # root zone in this set, so onion tolerates the least delay when the power
-    # window is missed. The scheduler's Ky weighting reflects that.
+    # FAO-56 Table 22, Onions - dry: Zr 0.3-0.6 m, p 0.30. Lower bound taken.
+    # The shallowest root zone in this set, so onion tolerates the least delay
+    # when a power window is missed. The scheduler's Ky weighting reflects that.
     root_depth_m: 0.30
     root_depth_initial_m: 0.10
     depletion_fraction: 0.30
-    ky: 1.10  # TODO [VERIFY] FAO-33 Table, onion, whole growing season
+    ky: 1.10  # TODO [VERIFY] FAO-33, onion, whole growing season
+    verified: { kc: true, root_depth: true, depletion_fraction: true, stage_days: false, ky: false }
 
   chickpea:
     display_name: Chickpea
@@ -209,20 +245,23 @@ crops:
     kc_initial: 0.40
     kc_mid: 1.00
     kc_end: 0.35
+    # Chick pea was NOT located in FAO-56 Table 11. These lengths are a
+    # plausible Indian rabi chickpea season and are wholly unverified.
     stage_days:
-      initial: 20      # TODO [VERIFY] Indian rabi chickpea
-      development: 30  # TODO [VERIFY]
-      mid: 40          # TODO [VERIFY]
-      late: 20         # TODO [VERIFY]
-    # FAO-56 Table 22, chickpea: Zr 0.6 to 1.0 m, p 0.50.
+      initial: 20      # TODO [VERIFY] not found in FAO-56 Table 11
+      development: 30  # TODO [VERIFY] not found in FAO-56 Table 11
+      mid: 40          # TODO [VERIFY] not found in FAO-56 Table 11
+      late: 20         # TODO [VERIFY] not found in FAO-56 Table 11
+    # FAO-56 Table 22, Chick pea: Zr 0.6-1.0 m, p 0.50. Lower bound taken.
     root_depth_m: 0.60
     root_depth_initial_m: 0.10
     depletion_fraction: 0.50
-    # No confirmed Ky for chickpea in either paper's table during this build.
-    # 1.0 is the neutral default: yield loss proportional to water deficit,
-    # neither amplified nor damped, so the scheduler neither over- nor
-    # under-prioritises this crop against others sharing a pump.
+    # No confirmed Ky for chickpea. 1.0 is the neutral default: yield loss
+    # proportional to water deficit, neither amplified nor damped, so the
+    # scheduler neither over- nor under-prioritises this crop against others
+    # sharing a pump.
     ky: 1.00  # TODO [VERIFY] not located in FAO-33 or FAO-66; neutral default
+    verified: { kc: true, root_depth: true, depletion_fraction: true, stage_days: false, ky: false }
 
 # --- Adjustment applied to every crop ----------------------------------------
 # FAO-56 Table 22 accompanying note: the tabulated p applies at an ETc of about
