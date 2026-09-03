@@ -75,15 +75,52 @@ class TestParameterFile:
         assert 0.0 < entry["depletion_fraction"] < 1.0
         assert entry["ky"] > 0.0
 
-    def test_the_file_declares_itself_unverified(self) -> None:
-        """The verification flag is present and honest.
+    def test_verification_is_recorded_per_field(self) -> None:
+        """Every crop declares which of its fields were checked against a source.
 
-        This test is the guard on the project's own citation discipline: the
-        seeded values have not been read off the printed tables, and the file
-        must say so until they have. When they are checked, flip the flag and
-        this assertion inverts.
+        This is the guard on the project's own citation discipline. Granularity
+        matters: Kc, Zr and p were read off the printed FAO-56 tables, while the
+        Indian stage lengths and Ky were not, and the file must be able to say
+        so field by field rather than crop by crop.
         """
-        assert load_params("crops")["verified"] is False
+        for crop in REQUIRED_CROPS:
+            verified = load_params("crops")["crops"][crop]["verified"]
+            for field in ("kc", "root_depth", "depletion_fraction", "stage_days", "ky"):
+                assert field in verified, f"{crop} does not declare verification of {field}"
+                assert isinstance(verified[field], bool)
+
+    def test_zr_and_p_are_verified_for_every_crop(self) -> None:
+        """Rooting depth and depletion fraction were confirmed against FAO-56 Table 22.
+
+        Checked on 3 September 2026 against the printed table at
+        https://www.fao.org/4/x0490e/x0490e0e.htm. All nine crops matched.
+        """
+        for crop in REQUIRED_CROPS:
+            verified = load_params("crops")["crops"][crop]["verified"]
+            assert verified["root_depth"] is True, f"{crop} rooting depth is unverified"
+            assert verified["depletion_fraction"] is True, f"{crop} p is unverified"
+
+    def test_stage_lengths_and_ky_remain_unverified(self) -> None:
+        """Indian stage lengths and Ky are honestly still marked unverified.
+
+        FAO-56 Table 11 has no Indian row, and Ky does not appear in FAO-56 at
+        all. Neither can be closed by reading FAO-56, so both stay false. If a
+        future session confirms them against ICAR, a state package of practice,
+        FAO-33 or FAO-66, this test inverts for the fields it confirmed.
+        """
+        for crop in REQUIRED_CROPS:
+            verified = load_params("crops")["crops"][crop]["verified"]
+            assert verified["stage_days"] is False
+            assert verified["ky"] is False
+
+    def test_verified_all_is_false_while_any_field_is_unverified(self) -> None:
+        """The summary flag cannot claim more than the per-field flags support."""
+        params = load_params("crops")
+        every_field = all(
+            value for crop in params["crops"].values() for value in crop["verified"].values()
+        )
+        assert params["verified_all"] == every_field
+        assert params["verified_all"] is False
 
 
 class TestCropCalendar:
