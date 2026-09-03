@@ -1,0 +1,5 @@
+State,Circle,Substation,Feeder,Group,Supply Start,Supply End,Days
+Maharashtra,Beed,BEED-33/11KV-A,AG-FDR-07,A,06:00,14:00,Mon-Sun
+Maharashtra,Beed,BEED-33/11KV-A,AG-FDR-09,A,,14:00,Mon-Sun
+Maharashtra,Beed,BEED-33/11KV-A,AG-FDR-10,A,25:00,14:00,Mon-Sun
+Maharashtra,Beed,BEED-33/11KV-B,AG-FDR-13,C,08:00,08:00,Mon-Sun
