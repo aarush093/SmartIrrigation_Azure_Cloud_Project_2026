@@ -538,3 +538,119 @@ aggregation costing about 2 percent of a typical irrigation run.
 IANA time zone database, so `zoneinfo` cannot resolve `Asia/Kolkata`, and the M2
 scheduler models power windows as IST-aware datetimes because a 22:00 to 06:00
 night feeder crosses midnight. Linux and macOS use the system database.
+---
+
+## 2026-09-03 — M2, power-window scheduler
+
+317 tests, `ruff`, `ruff format` and `mypy --strict` clean, no network in the
+default suite. Ninety-four of those tests are new and cover the scheduler.
+
+### Section 7 correction applied before implementation
+
+The opportunistic branch previously read `D >= C`, which fires only once the
+deficit has already outgrown one window's capacity. That is too late: a
+capacity-constrained refill exists to act before that point. It is replaced by
+`D_next > C`, evaluated on the depletion projected at the start of the next
+window, and `docs/PHASE2_NOVELTY_AND_PLAN.md` Section 7 records both the new
+policy and the superseded form.
+
+The `min_app` guard is new and load-bearing. Without it a small pump on a large
+field makes the window capacity `C` tiny, the capacity branch fires almost every
+night, and the farmer is told to run his pump for four minutes. That is worse
+than silence because it trains him to ignore the calls. `min_application_mm`
+defaults to 8 mm in `params/irrigation.yaml`, with that reasoning recorded beside
+it.
+
+The `CAPACITY_LIMIT` test asserts its own precondition, that today's deficit is
+still inside one window's capacity, so it fails against the superseded rule
+rather than passing by accident.
+
+### Midnight-crossing windows
+
+A window is a pair of timezone-aware datetimes, never a pair of clock times. A
+Maharashtra night feeder running 22:00 to 06:00 is eight hours ending the
+following morning; modelled as two times-of-day it is minus sixteen hours, and
+every downstream number is wrong in a way that only shows up on night feeders.
+
+Three defences, all tested:
+
+- `PowerWindow` refuses a window whose end does not follow its start, which is
+  exactly the shape a naive clock-time construction produces.
+- It refuses a naive datetime outright, because one silently assumes the
+  server's timezone rather than the field's.
+- `DeclaredRotation` and the DISCOM parser both put the following day's date on
+  a night window's end, and both are asserted to produce exactly eight hours.
+
+A property test asserts a 22:00 window sorts after an 06:00 one on the same
+date, which ordering by clock time alone could not guarantee.
+
+### Feeder reliability
+
+`r_new = alpha * outcome + (1 - alpha) * r_old`, alpha 0.3, initialised at 0.8
+for a feeder with no history, threshold 0.6. Constants in
+`params/scheduling.yaml`.
+
+Deliberately fast to react: a single failure takes a fresh feeder from 0.80 to
+0.56, crossing the threshold immediately, after which the schedule carries no
+clock time and the call says "when power comes, run X minutes". Telling a farmer
+that one day too early is a smaller error than giving him a clock time the feeder
+will not honour. Reliability also scales the window duration used to compute
+capacity, so an unreliable feeder is planned against what it is expected to
+deliver rather than what it promises.
+
+The missed call is the only measurement. There is no sensor.
+
+### Determinism
+
+Nothing in `plan_day` reads a clock, generates a random number or touches ambient
+state; `today` and the window list are arguments. Two property tests assert it:
+identical inputs give identical schedules, and the multi-field allocation is
+invariant to the order the caller supplied the fields.
+
+### DISCOM parser
+
+Built entirely against hand-made CSV fixtures under `tests/fixtures/` that
+reproduce the table shape Document Intelligence produces once its cells are
+flattened. **No circular is downloaded and none is committed**; the MSEDCL URL is
+recorded in the module docstring only, and its reuse terms carry a
+`TODO [VERIFY]`. The Azure call sits behind the extractor protocol and is never
+touched by a test.
+
+Two decisions worth recording:
+
+- A malformed time cell raises rather than defaulting. A window with a guessed
+  start would send a farmer to his pump at the wrong hour.
+- A row whose `Days` column cannot be understood is kept, not dropped, and the
+  ambiguity is surfaced as a warning. Dropping it would silently deny the farmer
+  his schedule; a warning lets the operator decide.
+
+### Deviations from the M2 brief
+
+**`required_pump_minutes` and `pump_minutes` both used, as ruled.** The scheduler
+calls the unguarded form to learn the true requirement and truncates it to the
+window itself; only a farmer-facing instruction passes through the 720-minute
+ceiling.
+
+**`minutes_for_discharge` added to `pump.py`.** The scheduler holds a discharge as
+a number, resolved once at onboarding, not as a `BucketTest` or a `PumpSpec`.
+Reconstructing a fake characterisation to satisfy the existing signature would
+have been the alternative, and would have read as though a bucket test had been
+performed when none had.
+
+**`Field` renamed to `IrrigatedField`.** `Field` is pydantic's own, and shadowing
+it in a module that uses `Field(...)` for every attribute is a trap. The brief
+named the model `Field`.
+
+**`src/azure` is on the import path rather than being a package.** `src/azure`
+carries no `__init__.py`, so the parser imports as
+`document_intelligence.parse_feeder_schedule`. The engine-purity CI check greps
+`src/backend` only and is unaffected.
+
+### Carried forward to M3
+
+- The `RainForecast` interface is in place with a conservative default. Krishna
+  Agrawal's calibration model implements the same `covers` contract.
+- `Schedule.reason_code` is the enumeration the call script will map from, and
+  `start_time` is already `None` on a low-reliability feeder, which is the "when
+  power comes" case the script must render.
+- Farmer-facing script masters (`scripts/{hi,en,ta}.yaml`) remain M3.
