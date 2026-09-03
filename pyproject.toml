@@ -110,8 +110,8 @@ warn_unreachable = true
 warn_no_return = true
 show_error_codes = true
 pretty = true
-mypy_path = "src/backend"
-files = ["src/backend", "tests"]
+mypy_path = "src/backend:src/azure"
+files = ["src/backend", "src/azure", "tests"]
 exclude = "(^|/)(handoff|\\.venv)/"
 
 [[tool.mypy.overrides]]
@@ -125,7 +125,7 @@ ignore_missing_imports = true
 [tool.pytest.ini_options]
 minversion = "8.0"
 testpaths = ["tests"]
-pythonpath = ["src/backend"]
+pythonpath = ["src/backend", "src/azure"]
 addopts = [
     "-ra",
     "--strict-markers",
