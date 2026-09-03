@@ -2,7 +2,7 @@
 
 **Date:** 3 September 2026
 **Author:** Aarush Pandit (23BIT0416)
-**Status:** Mechanism confirmed viable. One architecture decision is blocked pending approval.
+**Status:** Mechanism confirmed viable. Hosting decided: consumption plan (Decision 1, section 3).
 
 The entire illiteracy-first design rests on one assumption: that an inbound call
 can be detected and refused *without being answered*, so that the farmer is never
@@ -47,10 +47,10 @@ already arrived.
 
 ---
 
-## 2. The problem this exposed, and it is not small
+## 2. The cold-start constraint, and why it does not bind here
 
-Microsoft's incoming-call guidance contains an explicit warning against the
-hosting plan this project had already chosen:
+Microsoft's incoming-call guidance warns against hosting the webhook on compute
+that scales to zero:
 
 > "Avoid hosting this endpoint on compute that scales to zero or has cold-start
 > latency. For example, a serverless function app on a consumption-based plan can
@@ -58,44 +58,92 @@ hosting plan this project had already chosen:
 > arrives at a cold instance, the time spent starting the host can consume the
 > answer window, and the call goes unanswered."
 
-Plan Section 17.3 lists **Functions on a consumption plan** among the services
-deployed in Phase-II. For the daily outbound call that is fine: a timer trigger
-has no deadline. For the **inbound** missed-call webhook it is not, and the
-failure mode is exactly the one that destroys the project's credibility at
-demonstration: the farmer rings number A to say he watered his field, the
-Function is cold, the 30-second window expires, and the system silently loses the
-only sensor reading it will ever get from that field that day.
+**That warning is written for applications that must answer the call**, which is
+how an ordinary IVR works: the 30-second ring is a hard deadline because a call
+not answered inside it is a customer lost.
 
-The failure is also worst precisely when the system is least used, which is a
-pilot with three farmers.
+**This design never answers.** The success state for a missed call is precisely
+that the call is *not* connected. Working through what a cold start actually
+costs:
 
-Microsoft's recommended alternatives, quoted:
-
-- Azure App Service with Always On enabled
-- Azure Functions on a plan that keeps always-ready (prewarmed) instances
-- Azure Container Apps with a minimum replica count greater than zero
-- Azure Kubernetes Service with sufficient baseline capacity
-
-### Options
-
-| Option | Effect on the pilot | Cost |
+| | Warm Function | Cold Function |
 |---|---|---|
-| **A. Split the app.** Timer-triggered planning stays on consumption; the inbound `acs_events` webhook moves to a small always-on host. | Correct behaviour where it matters, consumption billing where it does not. Two deployment units to manage. | One always-on instance. |
-| **B. Whole Functions app on a Premium plan with one always-ready instance.** | Simplest to reason about and to deploy. | Premium plan floor, materially above consumption. |
-| **C. Stay on consumption and accept the risk.** | Free, and wrong. A missed missed-call is an undetectable data loss, not a visible error. | None, but the accessibility claim in the report becomes unevidenced. |
-| **D. Keep-warm ping.** A timer trigger every few minutes to prevent dormancy. | A widely used workaround, but Microsoft's guidance addresses cold start *and* reactive scale-out under a burst; a ping does not fix the second. | Negligible. | 
+| What happens to the call | `Reject` fires, the call ends immediately | No `Reject` in time, the call rings out unanswered |
+| What happens to the event | Event Grid delivers it | Event Grid delivers it, a few seconds later |
+| Sensor reading | Recorded | Recorded |
 
-**Recommendation: A.** It preserves the consumption-plan economics the plan
-argued for, confines the always-on cost to the one endpoint with a hard deadline,
-and matches Microsoft's own guidance to "keep the path between the `IncomingCall`
-event and the `AnswerCall` API short and direct".
+The `IncomingCall` event goes to Event Grid, not to the call, and Event Grid
+delivers and retries independently of whether the ring window is still open.
+Both paths end with the call unconnected and the event recorded. The cold path is
+slower and less tidy; **neither loses the reading**. A missed-call event that
+lands twenty seconds late is worth exactly as much as one that lands instantly,
+because what it updates is a daily water balance.
 
-**This decision costs money on Azure and is therefore not mine to take.** It is
-raised here before the Functions app is built, rather than after, because the
-choice determines the deployment layout of `src/azure/functions/` and the Bicep
-in M5.
+The 30-second answer window is therefore not a binding constraint on this
+channel. An earlier draft of this document treated it as one and recommended
+buying always-on compute to satisfy it. That was an error of reasoning:
+importing a constraint from the answer-the-call scenario without checking whether
+it binds here. Buying warm compute for a flow that never answers would also be
+indefensible at review, and correctly so.
 
----
+## 3. Decisions
+
+### Decision 1: consumption plan, single Functions app
+
+`function_app.py` at the deployment root, no split, as plan Section 17.3 already
+specified. Cheaper and more defensible than the alternative.
+
+`Reject` remains the action taken on `IncomingCall`. It is instant and
+deterministic when the host is warm, and ringing out is a correct fallback when
+it is not.
+
+**Phase-III upgrade path**, if the pilot ever shows a need for guaranteed instant
+rejection: move only the `acs_events` webhook to always-on compute (App Service
+with Always On, or Functions on a plan with pre-warmed instances), leaving the
+timer-triggered planning on consumption. Nothing in the M3 design forecloses
+that; the webhook is already a separate trigger.
+
+**To be measured during the pilot:** the observed share of inbound calls that
+receive an instant `Reject` versus those that ring out. A documented limitation
+with a number behind it is a strong review answer; an unexamined one is not.
+
+### Decision 2: retry generously, and dead-letter, which reverses Microsoft's guidance
+
+Microsoft recommends Max Event Delivery Attempts of 2 and Event Time to Live of 1
+minute for `IncomingCall`, because in the answer-the-call scenario a late event is
+useless and dropping it quickly is right.
+
+**For this design the opposite holds.** A late event is still a valid field
+observation, and it may be the only one that field produces that day. Dropping it
+after a minute would discard the reading to save nothing.
+
+The Event Grid subscription is therefore configured with:
+
+- Event Time to Live measured in **hours**, not one minute
+- the **default** delivery attempt count, not 2
+- a **dead-letter destination in Blob Storage**, so an event that ultimately
+  fails delivery is preserved rather than lost silently
+
+### Decision 3: a keep-warm timer, as comfort and not as correctness
+
+A five-minute timer trigger costs effectively nothing on consumption and raises
+the share of calls that receive an instant `Reject`.
+
+**Correctness must not depend on it.** A test asserts the handler behaves
+identically whether the event arrives during the ring or a minute afterwards, so
+that removing the timer changes cost and tidiness but never outcome.
+
+### Decision 4: confirmation is carried on the next call, not on a new one
+
+Neither path gives the farmer any feedback that his missed call registered: a
+rejected call and a rung-out call sound much the same to him. Adding a
+confirmation call or SMS would cost money on every event and add a second thing
+that can fail.
+
+Instead the **next scheduled call opens by acknowledging it**: "kal aapne bataya
+tha ki paani de diya". Zero marginal cost, carried on a call that was happening
+anyway, and it gives him the chance to correct us if we logged the wrong thing.
+Implemented as an optional opening clause in ``speak_schedule``.
 
 ## 3. Consequences already absorbed into the M3 design
 
@@ -107,10 +155,9 @@ under-irrigate the field for the rest of the interval. Every event carries a
 deduplication key of caller number, number called and IST date, and the handler
 rejects a repeat. Unit-tested as a no-op.
 
-**Event Grid retry settings must be tuned.** Microsoft recommends Max Event
-Delivery Attempts of 2 and Event Time to Live of 1 minute for `IncomingCall`,
-because a call that has stopped ringing cannot be usefully retried. This goes
-into the M5 Bicep.
+**Event Grid retry settings must be tuned, in the opposite direction to
+Microsoft's default advice.** See Decision 2. Generous TTL, default attempt
+count, dead-letter to Blob Storage. This goes into the M5 Bicep.
 
 **The webhook must be filtered.** Without an Event Grid subscription filter the
 application receives duplicate `IncomingCall` events for redirect scenarios, and
