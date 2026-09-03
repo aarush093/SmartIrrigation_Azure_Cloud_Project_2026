@@ -100,18 +100,68 @@ class TestParameterFile:
             assert verified["root_depth"] is True, f"{crop} rooting depth is unverified"
             assert verified["depletion_fraction"] is True, f"{crop} p is unverified"
 
-    def test_stage_lengths_and_ky_remain_unverified(self) -> None:
-        """Indian stage lengths and Ky are honestly still marked unverified.
+    # FAO-56 Table 11 contains exactly two Indian rows covering this crop set:
+    # Barley/Oats/Wheat (November, Central India) and Maize (grain) (October,
+    # India dry cool). Only those two crops may claim verified stage lengths.
+    CROPS_WITH_INDIAN_TABLE_11_ROWS = ("wheat", "maize")
 
-        FAO-56 Table 11 has no Indian row, and Ky does not appear in FAO-56 at
-        all. Neither can be closed by reading FAO-56, so both stay false. If a
-        future session confirms them against ICAR, a state package of practice,
-        FAO-33 or FAO-66, this test inverts for the fields it confirmed.
+    def test_stage_lengths_are_verified_only_where_an_indian_row_exists(self) -> None:
+        """Only wheat and maize have printed Indian rows in FAO-56 Table 11.
+
+        Every other crop's lengths come from a non-Indian region and must stay
+        unverified. Claiming otherwise would misrepresent a Mediterranean or
+        West African season as an Indian one.
         """
         for crop in REQUIRED_CROPS:
             verified = load_params("crops")["crops"][crop]["verified"]
-            assert verified["stage_days"] is False
-            assert verified["ky"] is False
+            expected = crop in self.CROPS_WITH_INDIAN_TABLE_11_ROWS
+            assert verified["stage_days"] is expected, (
+                f"{crop} stage_days verification should be {expected}"
+            )
+
+    def test_the_verified_indian_stage_lengths_match_the_printed_totals(self) -> None:
+        """The two Indian rows total 120 and 125 days as printed in Table 11."""
+        assert growing_period_days("wheat") == 120
+        assert growing_period_days("maize") == 125
+
+    def test_ky_remains_unverified_for_every_crop(self) -> None:
+        """Ky does not appear in FAO-56 at all, so reading FAO-56 cannot confirm it.
+
+        It comes from FAO-33, with stage-wise updates in FAO-66, neither of which
+        was reachable in this session.
+        """
+        for crop in REQUIRED_CROPS:
+            assert load_params("crops")["crops"][crop]["verified"]["ky"] is False
+
+    def test_kc_ini_matches_the_table_12_group_value_where_the_cell_is_blank(self) -> None:
+        """Kc_ini is printed on the group header row; a blank crop cell inherits it.
+
+        Misreading a blank cell as a printed value is what caused cotton's
+        correct 0.35 to be wrongly "corrected" to 0.30 on 3 September 2026. This
+        test pins the group values so the same misreading cannot recur silently.
+        """
+        group_values = {
+            "onion": 0.70,  # a. Small Vegetables
+            "tomato": 0.60,  # b. Vegetables - Solanaceae
+            "groundnut": 0.40,  # e. Legumes
+            "chickpea": 0.40,  # e. Legumes
+            "cotton": 0.35,  # g. Fibre Crops
+            "maize": 0.30,  # i. Cereals
+        }
+        crops = load_params("crops")["crops"]
+        for crop, expected in group_values.items():
+            assert crops[crop]["kc_initial"] == pytest.approx(expected), (
+                f"{crop} Kc_ini must be the Table 12 group header value"
+            )
+
+    def test_crops_printing_their_own_kc_ini_keep_it(self) -> None:
+        """Rice, sugarcane and winter wheat override their group value."""
+        crops = load_params("crops")["crops"]
+        assert crops["rice"]["kc_initial"] == pytest.approx(1.05)
+        assert crops["sugarcane"]["kc_initial"] == pytest.approx(0.40)
+        # Winter Wheat prints 0.4 for frozen soils and 0.7 for non-frozen; Indian
+        # rabi wheat is non-frozen.
+        assert crops["wheat"]["kc_initial"] == pytest.approx(0.70)
 
     def test_verified_all_is_false_while_any_field_is_unverified(self) -> None:
         """The summary flag cannot claim more than the per-field flags support."""
@@ -135,9 +185,18 @@ class TestCropCalendar:
         assert stage.days_after_sowing == 0
 
     def test_kc_is_flat_through_the_initial_stage(self) -> None:
-        """Kc does not move until the development stage begins."""
+        """Kc does not move until the development stage begins.
+
+        The last day is taken from the parameter file rather than hardcoded, so
+        the test follows the crop calendar when a stage length is corrected. It
+        was hardcoded to day 20, which stopped being inside wheat's initial
+        stage once the Central India row shortened it to 15 days.
+        """
+        initial_days = int(load_params("crops")["crops"]["wheat"]["stage_days"]["initial"])
         first = crop_calendar("wheat", SOWN, SOWN + dt.timedelta(days=1))
-        last = crop_calendar("wheat", SOWN, SOWN + dt.timedelta(days=20))
+        last = crop_calendar("wheat", SOWN, SOWN + dt.timedelta(days=initial_days))
+        assert first.stage is GrowthStage.INITIAL
+        assert last.stage is GrowthStage.INITIAL
         assert first.kc == pytest.approx(last.kc)
 
     def test_kc_ramps_monotonically_through_development(self) -> None:

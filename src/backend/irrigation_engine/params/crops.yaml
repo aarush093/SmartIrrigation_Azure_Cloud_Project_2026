@@ -3,24 +3,60 @@
 # ============================================================================
 # VERIFICATION STATUS
 #
-# Kc, Zr and p were checked on 3 September 2026 against the printed FAO-56
-# tables, read from the FAO publication itself:
+# Kc, Zr, p and, where an Indian row exists, stage lengths were checked against
+# the printed FAO-56 tables, read from the FAO publication itself:
 #
 #   Table 11 and Table 12  https://www.fao.org/4/x0490e/x0490e0b.htm  (Chapter 6)
 #   Table 22               https://www.fao.org/4/x0490e/x0490e0e.htm  (Chapter 8)
 #
 # Verification is recorded PER FIELD, not per crop, because a crop can have a
-# confirmed Kc and an unconfirmed Indian stage length. Each crop carries a
-# `verified` block saying exactly which of its fields were read off the printed
-# table. Nothing is marked verified that was not actually checked.
+# confirmed Kc and an unconfirmed stage length. Each crop carries a `verified`
+# block saying exactly which of its fields were read off the printed table.
+# Nothing is marked verified that was not actually checked.
 #
-# Still unverified, and why:
+# --- HOW TO READ TABLE 12, and the error it caused --------------------------
 #
-#   stage_days  FAO-56 Table 11 gives lengths by region and planting date, and
-#               none of its rows is India. The row each value was taken from is
-#               named in the comment, but an Indian sowing window differs, so
-#               these stay false pending ICAR or state agricultural university
-#               packages of practice. Phase-III item.
+# Table 12 is organised into lettered GROUPS. Kc_ini is printed on the GROUP
+# HEADER row, and an individual crop row leaves that cell BLANK unless the crop
+# overrides it. A blank Kc_ini therefore means "inherit the group value", not
+# "not stated".
+#
+#   a. Small Vegetables         Kc_ini 0.7
+#   b. Vegetables - Solanaceae  Kc_ini 0.6
+#   e. Legumes (Leguminosae)    Kc_ini 0.4
+#   g. Fibre Crops              Kc_ini 0.35
+#   i. Cereals                  Kc_ini 0.3
+#
+# On 3 September 2026 this structure was misread: Cotton's blank cell was taken
+# as a printed 0.30 and its correct seeded value of 0.35 was "corrected" to it,
+# introducing an error. Reverted on 3 September 2026. The trail is recorded here
+# and in docs/PHASE2_BUILD_LOG.md rather than quietly tidied away, because a
+# correction that was itself wrong is exactly the kind of thing that otherwise
+# survives into a report.
+#
+# --- LIMITATION ON EVERY Kc_ini VALUE BELOW ---------------------------------
+#
+# FAO-56 Chapter 6 states: "The values for Kc ini in Table 12 are only
+# approximations and should only be used for estimating ETc during preliminary
+# or planning studies." More accurate estimates come from the chapter's
+# wetting-frequency method, which accounts for wetting interval, evaporative
+# demand and the size of each wetting event.
+#
+# That method is NOT implemented. Kc_ini therefore carries a known accuracy
+# limitation on every crop here, and it is the initial stage, when the canopy is
+# sparse and evaporation from the soil surface dominates, that is most affected.
+# TODO [VERIFY] implement the wetting-frequency method, or state this limitation
+# in the report. Phase-III item.
+#
+# --- STILL UNVERIFIED, AND WHY ----------------------------------------------
+#
+#   stage_days  Verified for wheat and maize, which have printed Indian rows in
+#               Table 11. Every other crop's row is from a non-Indian region and
+#               stays false. FAO-56 itself says Table 11 values "are useful only
+#               as a general guide and for comparison purposes" and recommends
+#               local observation of plant stage development wherever possible,
+#               so even the verified Indian rows are a starting point rather
+#               than a substitute for field observation.
 #
 #   ky          FAO-33 (Doorenbos and Kassam 1979) and FAO-66 (Steduto et al.
 #               2012) are separate publications and were not reachable in this
@@ -46,13 +82,18 @@ verified_all: false
 #           66, 2012. Plan reference R25. Updated stage-wise Ky.
 #
 # --- Conventions --------------------------------------------------------------
-# Where Table 22 prints a Zr RANGE, the LOWER bound is taken throughout. A
-# shallower root zone gives a smaller TAW, so the engine irrigates earlier and in
-# smaller doses, which is the conservative direction under a rationed supply.
+# Where Table 22 prints a Zr RANGE, the LOWER bound is taken. A shallower root
+# zone gives a smaller TAW, so the engine irrigates earlier and in smaller doses,
+# which is the conservative direction under a rationed supply.
 #
 # Where Table 12 prints a Kc_end RANGE, the endpoint matching the management
 # practice is taken and the choice is stated in the comment. No mid-range value
 # is invented: every figure below is a printed one.
+#
+# Two footnotes are easy to conflate and are NOT interchangeable:
+#   footnote 10 (wheat)  the HIGHER Kc_end is for hand-harvested crops
+#   footnote 11 (maize)  the FIRST Kc_end is for harvest at high grain moisture,
+#                        the SECOND for harvest after complete field drying
 #
 # Units: stage_days in calendar days, kc dimensionless, root_depth_m in metres,
 # depletion_fraction dimensionless, ky dimensionless.
@@ -61,61 +102,71 @@ crops:
 
   wheat:
     display_name: Wheat
-    # FAO-56 Table 12, "Winter Wheat". Kc_ini is 0.4 on frozen soils and 0.7 on
-    # non-frozen soils; Indian rabi wheat is non-frozen, so 0.7.
+    # FAO-56 Table 12, "Winter Wheat", which prints its own Kc_ini rather than
+    # inheriting the Cereals group value: 0.4 on frozen soils, 0.7 on non-frozen.
+    # Indian rabi wheat is non-frozen, so 0.7.
     kc_initial: 0.70
     kc_mid: 1.15
-    # Table 12 prints 0.25-0.4, footnote 10: the higher value is for
-    # hand-harvested crops. 0.25 is harvest after complete field drying.
-    kc_end: 0.25
-    # FAO-56 Table 11 prints 30/140/40/30 for November, Mediterranean. That is a
-    # 240-day season; Indian rabi wheat runs roughly 120 to 145 days, so the
-    # values below are shortened and remain unverified.
+    # Table 12 prints the range 0.25 to 0.4. Footnote 10: the HIGHER value is for
+    # hand-harvested crops. Smallholder rabi wheat in the pilot districts is
+    # frequently hand-harvested, so 0.4.
+    #
+    # A previous comment here attributed 0.25 to "harvest after complete field
+    # drying". That is footnote 11, which belongs to maize, not wheat. Corrected
+    # on 3 September 2026.
+    kc_end: 0.40
+    # FAO-56 Table 11, "Barley/Oats/Wheat", 15/25/50/30, total 120 days, planted
+    # November, CENTRAL INDIA. A printed Indian row, so this is verified.
+    # Replaces a Mediterranean row previously used for want of an Indian one.
     stage_days:
-      initial: 30      # TODO [VERIFY] Indian rabi calendar
-      development: 45  # TODO [VERIFY]
-      mid: 40          # TODO [VERIFY]
-      late: 30         # TODO [VERIFY]
+      initial: 15
+      development: 25
+      mid: 50
+      late: 30
     # FAO-56 Table 22, Winter Wheat: Zr 1.5-1.8 m, p 0.55. Lower bound taken.
     root_depth_m: 1.50
     root_depth_initial_m: 0.15
     depletion_fraction: 0.55
     ky: 1.00  # TODO [VERIFY] FAO-33, winter wheat, whole growing season
-    verified: { kc: true, root_depth: true, depletion_fraction: true, stage_days: false, ky: false }
+    verified: { kc: true, root_depth: true, depletion_fraction: true, stage_days: true, ky: false }
 
   maize:
     display_name: Maize
-    # FAO-56 Table 12, "Maize, Field (grain)".
+    # FAO-56 Table 12, "Maize, Field (grain)". Kc_ini cell is blank, so it
+    # inherits the Cereals group header value of 0.3.
     kc_initial: 0.30
     kc_mid: 1.20
-    # Table 12 prints 0.60-0.35, footnote 11: the first value is for harvest at
-    # high grain moisture, the second for harvest after complete field drying to
-    # about 18 percent. Indian grain maize is field-dried, so 0.35.
+    # Table 12 prints 0.60 to 0.35. Footnote 11: the FIRST value is for harvest
+    # at high grain moisture, the SECOND for harvest after complete field drying
+    # to about 18 percent. Indian grain maize is field-dried, so 0.35.
     kc_end: 0.35
-    # FAO-56 Table 11, "25 40 45 30" for December/January, arid climate. Matches
-    # the Indian rabi maize window in length but not in region.
+    # FAO-56 Table 11, "Maize (grain)", 20/35/40/30, total 125 days, planted
+    # October, INDIA (dry, cool). A printed Indian row, so this is verified.
     stage_days:
-      initial: 25      # TODO [VERIFY] Indian kharif and rabi calendars differ
-      development: 40  # TODO [VERIFY]
-      mid: 45          # TODO [VERIFY]
-      late: 30         # TODO [VERIFY]
+      initial: 20
+      development: 35
+      mid: 40
+      late: 30
     # FAO-56 Table 22, Maize (grain): Zr 1.0-1.7 m, p 0.55. Lower bound taken.
     root_depth_m: 1.00
     root_depth_initial_m: 0.15
     depletion_fraction: 0.55
     ky: 1.25  # TODO [VERIFY] FAO-33, maize, whole growing season
-    verified: { kc: true, root_depth: true, depletion_fraction: true, stage_days: false, ky: false }
+    verified: { kc: true, root_depth: true, depletion_fraction: true, stage_days: true, ky: false }
 
   rice:
     display_name: Rice
-    # FAO-56 Table 12, "Rice". Kc_ini is high because a paddy is ponded, so the
-    # surface is open water for much of the initial stage.
+    # FAO-56 Table 12, "Rice", which prints its own Kc_ini of 1.05 rather than
+    # inheriting the Cereals group value. It is high because a paddy is ponded,
+    # so the surface is open water for much of the initial stage.
     kc_initial: 1.05
     kc_mid: 1.20
-    # Table 12 prints 0.90-0.60. 0.60 is taken: Indian paddy is normally drained
-    # before harvest, and a drained field transpires less than a ponded one.
+    # Table 12 prints 0.90 to 0.60. 0.60 is taken: Indian paddy is normally
+    # drained before harvest, and a drained field transpires less than a ponded
+    # one.
     kc_end: 0.60
     # FAO-56 Table 11, "30 30 60 30" for December/May, tropics and Mediterranean.
+    # No Indian row for rice, so this stays unverified.
     stage_days:
       initial: 30      # TODO [VERIFY] Indian kharif transplanted paddy
       development: 30  # TODO [VERIFY]
@@ -128,22 +179,24 @@ crops:
     ky: 1.09  # TODO [VERIFY] FAO-66, rice; FAO-33 gives a different figure
     verified: { kc: true, root_depth: true, depletion_fraction: true, stage_days: false, ky: false }
     # Rice is normally grown ponded rather than to a depletion trigger. The water
-    # balance still runs, but a ponded-paddy mode is a Phase-III item and is
-    # recorded in the risk register rather than approximated here.
+    # balance still runs, but a ponded-paddy mode is a Phase-III item.
     notes: "TODO [VERIFY] ponded paddy management differs from a depletion-triggered balance"
 
   cotton:
     display_name: Cotton
-    # FAO-56 Table 12, "Cotton". Corrected on 3 September 2026 from a seeded
-    # 0.35 to the printed 0.30.
-    kc_initial: 0.30
-    # Table 12 prints 1.15-1.20. Lower bound taken.
+    # FAO-56 Table 12, "Cotton". The Kc_ini cell is BLANK, so cotton inherits the
+    # Fibre Crops group header value of 0.35.
+    #
+    # This value was wrongly "corrected" to 0.30 on 3 September 2026 by reading
+    # the blank cell as a printed value. Reverted the same day. See the header.
+    kc_initial: 0.35
+    # Table 12 prints 1.15 to 1.20. Lower bound taken.
     kc_mid: 1.15
-    # Table 12 prints 0.70-0.50. 0.70 applies at the first picking, falling
+    # Table 12 prints 0.70 to 0.50. 0.70 applies at the first picking, falling
     # toward 0.50 by the last; the first picking is taken.
     kc_end: 0.70
     # FAO-56 Table 11, "30 50 60 55" for March to May, Egypt, Pakistan and
-    # California.
+    # California. No Indian row for cotton, so this stays unverified.
     stage_days:
       initial: 30      # TODO [VERIFY] Maharashtra kharif cotton
       development: 50  # TODO [VERIFY]
@@ -158,11 +211,12 @@ crops:
 
   sugarcane:
     display_name: Sugarcane
-    # FAO-56 Table 12, "Sugarcane".
+    # FAO-56 Table 12, "Sugar Cane", which prints its own Kc_ini of 0.40.
     kc_initial: 0.40
     kc_mid: 1.25
     kc_end: 0.75
-    # FAO-56 Table 11, "35 60 190 120" for low latitudes, virgin cane.
+    # FAO-56 Table 11, "35 60 190 120" for low latitudes, virgin cane. No Indian
+    # row, so this stays unverified.
     stage_days:
       initial: 35       # TODO [VERIFY] Indian adsali or suru planting
       development: 60   # TODO [VERIFY]
@@ -177,13 +231,18 @@ crops:
 
   groundnut:
     display_name: Groundnut
-    # FAO-56 Table 12, "Groundnut (Peanut)". Kc_mid 1.15 and Kc_end 0.60 were
-    # read from the printed table; Kc_ini could not be resolved from the page
-    # because of the footnote markers, so it stays unverified.
-    kc_initial: 0.40  # TODO [VERIFY] FAO-56 Table 12 Kc_ini not resolved
+    # FAO-56 Table 12, "Groundnut (Peanut)". The Kc_ini cell is BLANK, so it
+    # inherits the Legumes (Leguminosae) group header value of 0.4.
+    #
+    # A previous note here said Kc_ini "could not be resolved because of the
+    # footnote markers". That was a misreading of the group structure; the value
+    # is printed, on the group header row. Corrected on 3 September 2026 and this
+    # field now flips to verified.
+    kc_initial: 0.40
     kc_mid: 1.15
     kc_end: 0.60
-    # FAO-56 Table 11, "25 35 45 25" for the dry season, West Africa.
+    # FAO-56 Table 11, "25 35 45 25" for the dry season, West Africa. No Indian
+    # row, so this stays unverified.
     stage_days:
       initial: 25      # TODO [VERIFY] Indian kharif groundnut
       development: 35  # TODO [VERIFY]
@@ -194,18 +253,26 @@ crops:
     root_depth_initial_m: 0.10
     depletion_fraction: 0.50
     ky: 0.70  # TODO [VERIFY] FAO-33, groundnut, whole growing season
-    verified: { kc: false, root_depth: true, depletion_fraction: true, stage_days: false, ky: false }
+    verified: { kc: true, root_depth: true, depletion_fraction: true, stage_days: false, ky: false }
 
   tomato:
     display_name: Tomato
-    # FAO-56 Table 12, "Tomato".
+    # FAO-56 Table 12, "Tomato". The Kc_ini cell is BLANK, so it inherits the
+    # Vegetables - Solanaceae group header value of 0.6.
     kc_initial: 0.60
     kc_mid: 1.15
-    # Table 12 prints 0.70-0.90. 0.70 is taken, for a crop left to senesce
-    # before harvest; 0.90 applies where it is picked green. Corrected on
-    # 3 September 2026 from a seeded 0.80, which is not a printed value.
-    kc_end: 0.70
-    # FAO-56 Table 11, "30 40 40 25" for January, arid region.
+    # Table 12 prints 0.70 to 0.90. The chapter's rule is that a crop irrigated
+    # frequently and harvested fresh keeps a wet topsoil and takes the HIGHER
+    # value, while a crop left to senesce and dry in the field takes the LOWER
+    # one. Indian fresh-market tomato is picked over several harvests and stays
+    # irrigated, so 0.90.
+    #
+    # A previous comment had this rule inverted and selected 0.70. Corrected on
+    # 3 September 2026. 0.90 is also the conservative direction, consistent with
+    # the lower-bound convention adopted for Zr.
+    kc_end: 0.90
+    # FAO-56 Table 11, "30 40 40 25" for January, arid region. No Indian row, so
+    # this stays unverified.
     stage_days:
       initial: 30      # TODO [VERIFY] Indian transplanted tomato
       development: 40  # TODO [VERIFY]
@@ -220,11 +287,13 @@ crops:
 
   onion:
     display_name: Onion
-    # FAO-56 Table 12, "Onion, dry".
+    # FAO-56 Table 12, "Onion, dry". The Kc_ini cell is BLANK, so it inherits the
+    # Small Vegetables group header value of 0.7.
     kc_initial: 0.70
     kc_mid: 1.05
     kc_end: 0.75
-    # FAO-56 Table 11, "15 25 70 40" for April, Mediterranean.
+    # FAO-56 Table 11, "15 25 70 40" for April, Mediterranean. No Indian row, so
+    # this stays unverified.
     stage_days:
       initial: 15      # TODO [VERIFY] Indian rabi onion
       development: 25  # TODO [VERIFY]
@@ -241,17 +310,19 @@ crops:
 
   chickpea:
     display_name: Chickpea
-    # FAO-56 Table 12, "Chick pea".
+    # FAO-56 Table 12, "Chick pea". The Kc_ini cell is BLANK, so it inherits the
+    # Legumes (Leguminosae) group header value of 0.4.
     kc_initial: 0.40
     kc_mid: 1.00
     kc_end: 0.35
-    # Chick pea was NOT located in FAO-56 Table 11. These lengths are a
+    # Chick pea does NOT appear in FAO-56 Table 11 at all; this was confirmed
+    # against the printed table rather than assumed. These lengths are a
     # plausible Indian rabi chickpea season and are wholly unverified.
     stage_days:
-      initial: 20      # TODO [VERIFY] not found in FAO-56 Table 11
-      development: 30  # TODO [VERIFY] not found in FAO-56 Table 11
-      mid: 40          # TODO [VERIFY] not found in FAO-56 Table 11
-      late: 20         # TODO [VERIFY] not found in FAO-56 Table 11
+      initial: 20      # TODO [VERIFY] chick pea absent from FAO-56 Table 11
+      development: 30  # TODO [VERIFY]
+      mid: 40          # TODO [VERIFY]
+      late: 20         # TODO [VERIFY]
     # FAO-56 Table 22, Chick pea: Zr 0.6-1.0 m, p 0.50. Lower bound taken.
     root_depth_m: 0.60
     root_depth_initial_m: 0.10
