@@ -139,19 +139,44 @@ Derived: net capacity of one window C = Q × duration(W) × Ea ÷ area (mm).
 Policy, evaluated once per day one hour before W1:
 
 ```
-D_skip = projected depletion at the start of W2 if no irrigation happens in W1
-         (D + sum of forecast ETc − expected effective rain over that horizon)
+C       = net depth one full window can deliver for this field   (mm)
+D       = current root-zone depletion                            (mm)
+D_next  = projected depletion at the start of W2 with no irrigation in W1
+          (D + sum of forecast ETc - expected effective rain over that horizon)
+min_app = minimum worthwhile net application                     (mm, default 8)
 
 if rain_covers(D, horizon = start of W2, confidence = calibrated):
-    SKIP with reason "rain"; schedule a check call the morning after the rain
-elif D_skip > RAW:
-    IRRIGATE in W1 (mandatory); minutes = min(D / Ea → minutes, duration(W1))
-    if truncated: carry remainder to W2 and say so in the call
-elif D >= C and D >= 0.5 × RAW:
-    IRRIGATE in W1 (opportunistic full-window refill)
+    SKIP, reason RAIN_EXPECTED
+elif D_next > RAW:
+    IRRIGATE in W1, reason STRESS_IMMINENT            (mandatory)
+elif D_next > C:
+    IRRIGATE in W1, reason CAPACITY_LIMIT             (refill before the
+                                                       deficit outgrows what
+                                                       one window can repay)
+elif D >= 0.5 * RAW and D >= min_app:
+    IRRIGATE in W1, reason OPPORTUNISTIC_TOPUP
 else:
-    WAIT; no call today unless a schedule change or rain change occurred
+    WAIT, reason NO_NEED
+
+minutes = min(required_pump_minutes(D, ...), window_minutes(W1))
+carry_over_mm = depth not delivered if the run was truncated
 ```
+
+**Correction, 3 September 2026.** The opportunistic branch previously read
+`D >= C`, which fires only once the deficit has *already* outgrown one window's
+capacity. That is too late: the point of a capacity-constrained refill is to act
+*before* that happens, which is what the `D_next > C` branch above now does. The
+superseded form is recorded here rather than deleted, so the reasoning trail
+survives review.
+
+The `min_app` guard is not cosmetic. Without it, a small pump on a large field
+makes `C` tiny, the capacity branch fires almost every day, and the farmer
+receives a useless four-minute instruction every night. `min_application_mm`
+lives in `params/irrigation.yaml` with that reasoning recorded beside it.
+
+`reason` is an enumeration, never free text, so that the call script maps
+deterministically from decision to spoken words and the simulation study can
+count decisions by reason.
 
 Extensions implemented in the same module:
 

@@ -37,6 +37,18 @@ water_balance:
     min: 30
     max: 100
 
+scheduling:
+  # Minimum worthwhile net application, mm. Below this the instruction is not
+  # worth placing a call for.
+  #
+  # This guard is load-bearing, not cosmetic. The capacity branch of the
+  # scheduler fires when the projected depletion would outgrow what one power
+  # window can deliver. On a small pump serving a large field the window
+  # capacity C is tiny, so without a floor that branch fires almost every day and
+  # the farmer is told to run his pump for four minutes every night. That is
+  # worse than silence: it trains him to ignore the calls.
+  min_application_mm: 8.0
+
 pump:
   # Combined pump and motor efficiency used when discharge is estimated from the
   # nameplate rating rather than measured by bucket test.
