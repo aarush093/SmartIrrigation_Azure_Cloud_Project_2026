@@ -1,0 +1,65 @@
+# English script master.
+#
+# Rules, from plan Section 5.5. Every one of them is enforced by
+# tests/test_scripts.py, which is the direct evidence for the accessibility
+# claim in the report.
+#
+#   1. NEVER say millimetres, evapotranspiration, depletion or percent soil
+#      moisture. Only minutes, clock times, and rain in familiar words.
+#   2. One decision per call. One number per decision.
+#   3. Every recommendation carries a one-line reason in plain words.
+#   4. The farmer's missed call is always right.
+#
+# The farmer is told WHEN TO START and WHEN TO STOP, never a raw duration. He
+# cannot convert 409 minutes into a stop time, and he will be asleep. Duration
+# is mentioned second, in hours and minutes, and only as reassurance.
+
+language: en
+name: English
+# TODO [VERIFY] confirm the Azure AI Speech voice name at build time.
+voice: en-IN-NeerjaNeural
+
+greeting: "{name}, hello."
+greeting_no_name: "Hello."
+
+# Decision 4 of docs/ACS_MISSED_CALL_FEASIBILITY.md: the only confirmation the
+# farmer ever gets that his missed call registered, carried on a call that was
+# happening anyway. It also lets him correct us if we logged the wrong thing.
+acknowledge:
+  water_given: "Yesterday you told us you watered the field."
+  power_failed: "Yesterday you told us the power did not come."
+
+power:
+  tonight: "Tonight power is from {start} to {end}."
+  tomorrow_morning: "Tomorrow morning power is from {start} to {end}."
+  today: "Today power is from {start} to {end}."
+  unreliable: "Power is not certain today."
+
+crop_needs_water: "The {crop} needs water."
+
+instruction:
+  with_time: "Start the pump at {start}, and stop it at {stop}."
+  when_power_comes: "When the power comes, start the pump and run it for {duration}, then stop."
+
+duration:
+  hours_and_minutes: "{hours} hours {minutes} minutes"
+  hours_only: "{hours} hours"
+  one_hour: "one hour"
+  minutes_only: "{minutes} minutes"
+
+reason:
+  stress_imminent: "The field is dry."
+  capacity_limit: "There is not much power time, so do not wait."
+  opportunistic_topup: "There is power time, so give it water."
+  rain_expected: "It will rain."
+  carry_over: "The power time is short, so we will finish the rest next time."
+
+skip:
+  opening: "Do not run the pump today."
+  rain: "Rain is expected."
+  followup: "If the rain does not come, we will call you again."
+
+question:
+  did_you_water: "Did you water the field yesterday? Press one for yes, two for no."
+
+repeat: "Press one to hear this again."

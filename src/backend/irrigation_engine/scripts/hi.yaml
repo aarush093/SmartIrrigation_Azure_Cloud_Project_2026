@@ -1,0 +1,57 @@
+# Hindi script master.
+#
+# TODO [VERIFY native speaker] Every line below must be checked by a native
+# Hindi speaker before the pilot, for register as much as for grammar: the
+# farmer is addressed with the familiar imperative a village extension worker
+# would use, not the formal register of a bank recording.
+#
+# Rules enforced by tests/test_scripts.py: no millimetres, no
+# evapotranspiration, no depletion, no percentages, no decimal numbers. Clock
+# times and minutes only. See plan Section 5.5.
+
+language: hi
+name: हिन्दी
+# TODO [VERIFY] confirm the Azure AI Speech voice name at build time.
+voice: hi-IN-SwaraNeural
+
+greeting: "{name}, नमस्ते।"
+greeting_no_name: "नमस्ते।"
+
+acknowledge:
+  water_given: "कल आपने बताया था कि पानी दे दिया।"
+  power_failed: "कल आपने बताया था कि बिजली नहीं आई।"
+
+power:
+  tonight: "आज रात बिजली {start} से {end} तक है।"
+  tomorrow_morning: "कल सुबह बिजली {start} से {end} तक है।"
+  today: "आज बिजली {start} से {end} तक है।"
+  unreliable: "आज बिजली का पक्का नहीं है।"
+
+crop_needs_water: "{crop} को पानी चाहिए।"
+
+instruction:
+  with_time: "{start} पंप चालू करो, और {stop} बंद कर दो।"
+  when_power_comes: "जब बिजली आए तो पंप चालू करो, {duration} चलाओ, फिर बंद कर दो।"
+
+duration:
+  hours_and_minutes: "{hours} घंटे {minutes} मिनट"
+  hours_only: "{hours} घंटे"
+  one_hour: "एक घंटा"
+  minutes_only: "{minutes} मिनट"
+
+reason:
+  stress_imminent: "खेत सूखा है।"
+  capacity_limit: "बिजली का समय कम है, इसलिए देर मत करो।"
+  opportunistic_topup: "बिजली है, इसलिए पानी दे दो।"
+  rain_expected: "बारिश आने वाली है।"
+  carry_over: "बिजली का समय कम है, बाकी अगली बार पूरा करेंगे।"
+
+skip:
+  opening: "आज पंप मत चलाओ।"
+  rain: "बारिश आने वाली है।"
+  followup: "अगर बारिश नहीं आई तो हम फिर फोन करेंगे।"
+
+question:
+  did_you_water: "कल पानी दिया? हाँ के लिए एक दबाओ, नहीं के लिए दो दबाओ।"
+
+repeat: "दोबारा सुनने के लिए एक दबाओ।"

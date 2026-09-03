@@ -12,27 +12,28 @@ from typing import Any
 
 import yaml
 
-__all__ = ["clear_cache", "load_params"]
+__all__ = ["clear_cache", "load_params", "load_script"]
 
 _PACKAGE = "irrigation_engine.params"
+_SCRIPTS_PACKAGE = "irrigation_engine.scripts"
 
 
 @cache
-def _read(name: str) -> dict[str, Any]:
-    """Read and parse one parameter file, cached by name."""
-    resource = resources.files(_PACKAGE).joinpath(f"{name}.yaml")
+def _read(name: str, package: str = _PACKAGE) -> dict[str, Any]:
+    """Read and parse one YAML file from a package, cached by name."""
+    resource = resources.files(package).joinpath(f"{name}.yaml")
     if not resource.is_file():
         available = sorted(
             p.name.removesuffix(".yaml")
-            for p in resources.files(_PACKAGE).iterdir()
+            for p in resources.files(package).iterdir()
             if p.name.endswith(".yaml")
         )
-        msg = f"no parameter file named {name!r}; available: {', '.join(available)}"
+        msg = f"no YAML file named {name!r} in {package}; available: {', '.join(available)}"
         raise FileNotFoundError(msg)
 
     parsed = yaml.safe_load(resource.read_text(encoding="utf-8"))
     if not isinstance(parsed, dict):
-        msg = f"parameter file {name!r} must parse to a mapping, got {type(parsed).__name__}"
+        msg = f"{name!r} must parse to a mapping, got {type(parsed).__name__}"
         raise ValueError(msg)
     return parsed
 
@@ -61,3 +62,24 @@ def clear_cache() -> None:
     read it again.
     """
     _read.cache_clear()
+
+
+def load_script(lang: str) -> dict[str, Any]:
+    """Load a farmer-facing script master by language code.
+
+    Kept separate from :func:`load_params` because the two hold different kinds
+    of thing and are governed by different rules: parameters carry agronomic
+    constants with a citation, while script masters carry every word a farmer
+    hears and are governed by the no-technical-units rule in CLAUDE.md.
+
+    Args:
+        lang: Language code, for example ``"hi"``, ``"en"`` or ``"ta"``.
+
+    Returns:
+        The parsed script master. Callers must treat it as read-only.
+
+    Raises:
+        FileNotFoundError: If no master exists for that language.
+        ValueError: If the file does not parse to a mapping.
+    """
+    return _read(lang, _SCRIPTS_PACKAGE)

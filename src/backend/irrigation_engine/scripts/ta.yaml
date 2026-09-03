@@ -1,0 +1,57 @@
+# Tamil script master.
+#
+# Tamil is a first-class master rather than a generated translation because the
+# Vellore pilot farmer is on the demonstration path. Plan Section 17.4.
+#
+# TODO [VERIFY native speaker] Every line below must be checked by a native
+# Tamil speaker before the pilot. This master was drafted without a native
+# speaker and must not be used in the field until it has been.
+#
+# Rules enforced by tests/test_scripts.py, as for the other masters.
+
+language: ta
+name: தமிழ்
+# TODO [VERIFY] confirm the Azure AI Speech voice name at build time.
+voice: ta-IN-PallaviNeural
+
+greeting: "{name}, வணக்கம்."
+greeting_no_name: "வணக்கம்."
+
+acknowledge:
+  water_given: "நேற்று நீங்கள் தண்ணீர் பாய்ச்சியதாக சொன்னீர்கள்."
+  power_failed: "நேற்று மின்சாரம் வரவில்லை என்று சொன்னீர்கள்."
+
+power:
+  tonight: "இன்று இரவு {start} முதல் {end} வரை மின்சாரம் இருக்கும்."
+  tomorrow_morning: "நாளை காலை {start} முதல் {end} வரை மின்சாரம் இருக்கும்."
+  today: "இன்று {start} முதல் {end} வரை மின்சாரம் இருக்கும்."
+  unreliable: "இன்று மின்சாரம் உறுதியாக தெரியவில்லை."
+
+crop_needs_water: "{crop} பயிருக்கு தண்ணீர் தேவை."
+
+instruction:
+  with_time: "{start} பம்ப் ஆன் செய்யுங்கள், {stop} நிறுத்துங்கள்."
+  when_power_comes: "மின்சாரம் வந்ததும் பம்ப் ஆன் செய்து {duration} ஓட விடுங்கள், பிறகு நிறுத்துங்கள்."
+
+duration:
+  hours_and_minutes: "{hours} மணி {minutes} நிமிடம்"
+  hours_only: "{hours} மணி"
+  one_hour: "ஒரு மணி நேரம்"
+  minutes_only: "{minutes} நிமிடம்"
+
+reason:
+  stress_imminent: "நிலம் வறண்டு இருக்கிறது."
+  capacity_limit: "மின்சார நேரம் குறைவு, அதனால் தாமதிக்க வேண்டாம்."
+  opportunistic_topup: "மின்சாரம் இருக்கிறது, தண்ணீர் பாய்ச்சுங்கள்."
+  rain_expected: "மழை வரப்போகிறது."
+  carry_over: "மின்சார நேரம் குறைவு, மீதியை அடுத்த முறை முடிப்போம்."
+
+skip:
+  opening: "இன்று பம்ப் ஓட்ட வேண்டாம்."
+  rain: "மழை வரப்போகிறது."
+  followup: "மழை வரவில்லை என்றால் நாங்கள் மீண்டும் அழைப்போம்."
+
+question:
+  did_you_water: "நேற்று தண்ணீர் பாய்ச்சினீர்களா? ஆம் என்றால் ஒன்று அழுத்துங்கள், இல்லை என்றால் இரண்டு."
+
+repeat: "மீண்டும் கேட்க ஒன்று அழுத்துங்கள்."
