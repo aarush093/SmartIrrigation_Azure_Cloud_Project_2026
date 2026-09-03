@@ -15,6 +15,6 @@ Files, seeded in M1:
     ``irrigation.yaml``  application efficiency per method, engine defaults
 """
 
-from irrigation_engine.params.loader import clear_cache, load_params
+from irrigation_engine.params.loader import clear_cache, load_params, load_script
 
-__all__ = ["clear_cache", "load_params"]
+__all__ = ["clear_cache", "load_params", "load_script"]
