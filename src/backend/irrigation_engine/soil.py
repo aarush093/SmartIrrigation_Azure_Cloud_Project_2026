@@ -33,6 +33,9 @@ capacity is unadjusted for compaction.
 
 from __future__ import annotations
 
+from enum import StrEnum
+from typing import Any
+
 from irrigation_engine.models import SoilProfile, SoilWaterConstants
 from irrigation_engine.params import load_params
 
@@ -196,3 +199,107 @@ def readily_available_water(taw_mm: float, depletion_fraction: float) -> float:
         msg = f"depletion fraction must lie strictly between 0 and 1, got {depletion_fraction}"
         raise ValueError(msg)
     return taw_mm * depletion_fraction
+
+
+class SoilSource(StrEnum):
+    """Where a field's soil profile came from.
+
+    Recorded on every resolution and surfaced to the operator, because the three
+    differ enormously in how much they can be trusted for a particular half
+    hectare.
+    """
+
+    #: The farmer answered the onboarding question about his own field. The
+    #: primary source: he knows his plot, and his answer describes it rather
+    #: than a 250 m grid pixel that may straddle a road.
+    FARMER_DECLARED = "farmer_declared"
+    #: ISRIC SoilGrids responded. Used to prefill the farmer's answer so the
+    #: operator confirms rather than guesses.
+    SOILGRIDS = "soilgrids"
+    #: Neither was available. A guess, and never used silently.
+    FALLBACK = "fallback"
+
+
+def available_texture_classes() -> tuple[str, ...]:
+    """The texture classes a farmer can choose between at onboarding."""
+    classes: dict[str, Any] = load_params("soil_texture_classes")["classes"]
+    return tuple(classes)
+
+
+def texture_class_names(lang: str = "en") -> dict[str, str]:
+    """The word for each texture class in one language.
+
+    Args:
+        lang: Language code.
+
+    Returns:
+        Class key to the farm word for it, for the onboarding screen and the
+        laminated card.
+    """
+    classes: dict[str, Any] = load_params("soil_texture_classes")["classes"]
+    return {
+        key: str(entry["names"].get(lang, entry["names"]["en"])) for key, entry in classes.items()
+    }
+
+
+def texture_from_class(texture_class: str) -> SoilProfile:
+    """Build a soil profile from a farmer-declared texture class.
+
+    Args:
+        texture_class: One of the keys from :func:`available_texture_classes`.
+
+    Returns:
+        A representative profile for that class.
+
+    Raises:
+        KeyError: If the class is not defined.
+    """
+    classes: dict[str, Any] = load_params("soil_texture_classes")["classes"]
+    try:
+        entry = classes[texture_class]
+    except KeyError:
+        msg = f"unknown texture class {texture_class!r}; available: {', '.join(sorted(classes))}"
+        raise KeyError(msg) from None
+
+    return SoilProfile(
+        sand=float(entry["sand"]),
+        silt=float(entry["silt"]),
+        clay=float(entry["clay"]),
+        # Organic carbon is not something a farmer can report and is not asked
+        # for. A low value is assumed, which understates water retention
+        # slightly and therefore errs toward irrigating.
+        organic_carbon=0.010,
+        bulk_density=float(entry["bulk_density"]),
+    )
+
+
+def resolve_soil(
+    *,
+    declared_class: str | None = None,
+    soilgrids_profile: SoilProfile | None = None,
+) -> tuple[SoilProfile, SoilSource]:
+    """Resolve the soil profile to use for a field, and say where it came from.
+
+    Precedence, and the reasoning behind it, is recorded in
+    ``params/soil_texture_classes.yaml``: the farmer's own answer is primary,
+    because it describes his plot rather than a grid pixel, and because
+    SoilGrids has repeatedly returned nothing. SoilGrids prefills that answer
+    where it responds.
+
+    Args:
+        declared_class: What the farmer said at onboarding.
+        soilgrids_profile: What SoilGrids returned, if anything.
+
+    Returns:
+        The profile to use, and the source it came from. A ``FALLBACK`` source
+        must be surfaced to the operator and never used silently: a
+        recommendation computed from a guessed soil can be wrong by a factor of
+        two in depth.
+    """
+    if declared_class:
+        return texture_from_class(declared_class), SoilSource.FARMER_DECLARED
+    if soilgrids_profile is not None:
+        return soilgrids_profile, SoilSource.SOILGRIDS
+
+    fallback = str(load_params("soil_texture_classes")["fallback_class"])
+    return texture_from_class(fallback), SoilSource.FALLBACK
