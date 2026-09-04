@@ -21,10 +21,11 @@ acknowledge:
   water_given: "कल आपने बताया था कि पानी दे दिया।"
   power_failed: "कल आपने बताया था कि बिजली नहीं आई।"
 
+# The spoken times already carry their part of day (raat, subah), so these
+# sentences must NOT repeat it. Only the day is framed here.
 power:
-  tonight: "आज रात बिजली {start} से {end} तक है।"
-  tomorrow_morning: "कल सुबह बिजली {start} से {end} तक है।"
-  today: "आज बिजली {start} से {end} तक है।"
+  today: "बिजली {start} से {end} तक है।"
+  tomorrow: "कल बिजली {start} से {end} तक है।"
   unreliable: "आज बिजली का पक्का नहीं है।"
 
 crop_needs_water: "{crop} को पानी चाहिए।"
@@ -55,3 +56,61 @@ question:
   did_you_water: "कल पानी दिया? हाँ के लिए एक दबाओ, नहीं के लिए दो दबाओ।"
 
 repeat: "दोबारा सुनने के लिए एक दबाओ।"
+
+# --- Spoken clock times -------------------------------------------------------
+# TODO [VERIFY native speaker] Every word below, for register as much as for
+# grammar.
+#
+# A farmer-facing script contains NO DIGITS. Every time is spoken in words with
+# its part of day, because a non-reader cannot tell whether "6:00" is subah or
+# shaam, and a text-to-speech voice handed a numeral renders it unpredictably.
+#
+# Hindi has irregular half-hour forms for one and two o'clock: 1:30 is "dedh"
+# and 2:30 is "dhai", not "saade ek" or "saade do". Those are listed separately
+# in half_special and take precedence.
+time:
+  numbers:
+    1: "एक"
+    2: "दो"
+    3: "तीन"
+    4: "चार"
+    5: "पाँच"
+    6: "छह"
+    7: "सात"
+    8: "आठ"
+    9: "नौ"
+    10: "दस"
+    11: "ग्यारह"
+    12: "बारह"
+  # Every multiple of five: a spoken DURATION may need 15, 30 or 45 even
+  # though a clock time at those minutes uses the quarter and half forms.
+  minutes:
+    5: "पाँच"
+    10: "दस"
+    15: "पंद्रह"
+    20: "बीस"
+    25: "पच्चीस"
+    30: "तीस"
+    35: "पैंतीस"
+    45: "पैंतालीस"
+    40: "चालीस"
+    50: "पचास"
+    55: "पचपन"
+  part_of_day:
+    morning: "सुबह"
+    afternoon: "दोपहर"
+    evening: "शाम"
+    night: "रात"
+  # 1:30 and 2:30 are irregular in Hindi and do not take "saade".
+  half_special:
+    1: "डेढ़"
+    2: "ढाई"
+  # Hindi says sawa, saade and paune rather than counting minutes.
+  uses_quarter_forms: true
+  forms:
+    oclock: "{part} {hour} बजे"
+    quarter_past: "{part} सवा {hour} बजे"
+    half_past: "{part} साढ़े {hour} बजे"
+    half_special: "{part} {word} बजे"
+    quarter_to: "{part} पौने {next_hour} बजे"
+    minutes_past: "{part} {hour} बज कर {minutes} मिनट"

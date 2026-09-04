@@ -38,10 +38,13 @@ from irrigation_engine.scheduler.models import IST, Decision, EventKind, ReasonC
 __all__ = [
     "CallWindow",
     "call_time_for",
+    "part_of_day",
     "render_next_day_question",
     "round_stop_time",
     "should_call",
+    "speak_duration",
     "speak_schedule",
+    "speak_time",
     "supported_languages",
 ]
 
@@ -194,36 +197,124 @@ def round_stop_time(start: dt.datetime, minutes: float) -> dt.datetime:
     return start + dt.timedelta(minutes=rounded)
 
 
-def _format_clock(when: dt.datetime, lang: str) -> str:
-    """Render a clock time for speech.
+def part_of_day(when: dt.datetime) -> str:
+    """Which part of the day a time falls in.
 
-    Twelve-hour form without a leading zero, since that is how the time is said
-    aloud in all three languages. The period of day is carried by the surrounding
-    sentence ("tonight", "tomorrow morning") rather than by an AM or PM marker,
-    which a non-literate listener would not parse.
+    Boundaries live in ``params/scheduling.yaml`` so the convention is
+    inspectable and can be tuned per district.
+
+    Args:
+        when: A datetime; only its hour is used.
+
+    Returns:
+        One of ``morning``, ``afternoon``, ``evening`` or ``night``.
     """
-    del lang  # All three masters currently share the numeric form.
-    hour = when.hour % 12 or 12
-    return f"{hour}:{when.minute:02d}"
+    bounds = load_params("scheduling")["part_of_day"]
+    hour = when.hour
+    if int(bounds["morning_start"]) <= hour < int(bounds["afternoon_start"]):
+        return "morning"
+    if int(bounds["afternoon_start"]) <= hour < int(bounds["evening_start"]):
+        return "afternoon"
+    if int(bounds["evening_start"]) <= hour < int(bounds["night_start"]):
+        return "evening"
+    return "night"
 
 
-def _format_duration(minutes: float, script: dict[str, Any]) -> str:
-    """Render a running time in hours and minutes, never as raw minutes.
+def speak_time(when: dt.datetime, lang: str = "hi") -> str:
+    """Render a clock time in words, with its part of day.
 
-    "Four hours fifty minutes" is something a farmer can hold in his head. "Two
-    hundred and ninety minutes" is not.
+    **No digits.** A farmer who cannot read does not know whether "6:00" is
+    morning or evening, and a text-to-speech voice handed a numeral renders it
+    unpredictably. This is the single most important string the system produces,
+    so it carries the least ambiguity the language allows.
+
+    Quarter and half forms are used where the master defines them, because that
+    is how the time is actually said: "paune paanch" rather than "chaar baj kar
+    paintaalees minute".
+
+    Args:
+        when: The time to speak. Minutes are expected to be a multiple of five,
+            which both the stop-time and duration rounding guarantee.
+        lang: Script master to use.
+
+    Returns:
+        The spoken time.
+
+    Raises:
+        KeyError: If the master lacks a word for the hour or minute needed,
+            which means the minute was not a multiple of five.
     """
-    total = int(minutes)
+    script = _script(lang)
+    block = script["time"]
+    numbers = block["numbers"]
+    part = str(block["part_of_day"][part_of_day(when)])
+    forms = block["forms"]
+
+    hour_12 = when.hour % 12 or 12
+    next_hour_12 = (when.hour + 1) % 12 or 12
+    minute = when.minute
+
+    if minute == 0:
+        return str(forms["oclock"]).format(hour=numbers[hour_12], part=part)
+
+    if minute == 30 and "half_special" in block and hour_12 in block["half_special"]:
+        return str(forms["half_special"]).format(word=block["half_special"][hour_12], part=part)
+
+    # Whether the language says "quarter past" or counts the minutes is a
+    # property of the language, declared in the master, not something to infer
+    # from which words happen to be listed.
+    minute_words = block["minutes"]
+    if bool(block.get("uses_quarter_forms", False)):
+        if minute == 15:
+            return str(forms["quarter_past"]).format(hour=numbers[hour_12], part=part)
+        if minute == 30:
+            return str(forms["half_past"]).format(hour=numbers[hour_12], part=part)
+        if minute == 45:
+            return str(forms["quarter_to"]).format(next_hour=numbers[next_hour_12], part=part)
+
+    if minute not in minute_words:
+        msg = (
+            f"no spoken word for {minute} minutes in {lang!r}; times must be "
+            f"rounded to a multiple of five before they are spoken"
+        )
+        raise KeyError(msg)
+    return str(forms["minutes_past"]).format(
+        hour=numbers[hour_12], minutes=minute_words[minute], part=part
+    )
+
+
+def speak_duration(minutes: float, lang: str = "hi") -> str:
+    """Render a running time in words, in hours and minutes.
+
+    Rounded down to five minutes, exactly as the stop time is, so the spoken
+    vocabulary stays small and the farmer is never asked to run the pump longer
+    than was computed.
+
+    Args:
+        minutes: Running time, minutes.
+        lang: Script master to use.
+
+    Returns:
+        The spoken duration.
+    """
+    script = _script(lang)
+    rounding = int(load_params("scheduling")["spoken_duration_rounding_minutes"])
+    total = (int(minutes) // rounding) * rounding
+
     hours, remainder = divmod(total, 60)
+    numbers = script["time"]["numbers"]
+    minute_words = script["time"]["minutes"]
     forms = script["duration"]
 
     if hours == 0:
-        return str(forms["minutes_only"]).format(minutes=remainder)
+        return str(forms["minutes_only"]).format(minutes=minute_words[remainder])
     if hours == 1 and remainder == 0:
         return str(forms["one_hour"])
     if remainder == 0:
-        return str(forms["hours_only"]).format(hours=hours)
-    return str(forms["hours_and_minutes"]).format(hours=hours, minutes=remainder)
+        return str(forms["hours_only"]).format(hours=numbers[hours])
+    return str(forms["hours_and_minutes"]).format(
+        hours=numbers[hours], minutes=minute_words[remainder]
+    )
 
 
 def speak_schedule(
@@ -305,16 +396,15 @@ def _irrigation_clauses(
     window = schedule.window
 
     if window is not None:
-        start_text = _format_clock(window.start, lang)
-        end_text = _format_clock(window.end, lang)
+        start_text = speak_time(window.start, lang)
+        end_text = speak_time(window.end, lang)
+        # The times carry their own part of day, so the frame names only the
+        # DAY. Repeating the period here produced "tonight ... ten at night" in
+        # English and a visibly doubled word in Tamil.
         if schedule.start_time is None:
             parts.append(str(script["power"]["unreliable"]))
         elif call_window is not None and call_window.is_previous_evening:
-            parts.append(
-                str(script["power"]["tomorrow_morning"]).format(start=start_text, end=end_text)
-            )
-        elif window.crosses_midnight or window.start.hour >= 18:
-            parts.append(str(script["power"]["tonight"]).format(start=start_text, end=end_text))
+            parts.append(str(script["power"]["tomorrow"]).format(start=start_text, end=end_text))
         else:
             parts.append(str(script["power"]["today"]).format(start=start_text, end=end_text))
 
@@ -325,14 +415,14 @@ def _irrigation_clauses(
         stop = round_stop_time(schedule.start_time, schedule.minutes)
         parts.append(
             str(script["instruction"]["with_time"]).format(
-                start=_format_clock(schedule.start_time, lang),
-                stop=_format_clock(stop, lang),
+                start=speak_time(schedule.start_time, lang),
+                stop=speak_time(stop, lang),
             )
         )
     else:
         parts.append(
             str(script["instruction"]["when_power_comes"]).format(
-                duration=_format_duration(schedule.minutes, script)
+                duration=speak_duration(schedule.minutes, lang)
             )
         )
 

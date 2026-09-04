@@ -80,8 +80,13 @@ from irrigation_engine.scripts_render import (
     supported_languages,
 )
 from irrigation_engine.soil import (
+    SoilSource,
+    available_texture_classes,
     readily_available_water,
+    resolve_soil,
     saxton_rawls,
+    texture_class_names,
+    texture_from_class,
     total_available_water,
 )
 from irrigation_engine.telephony import (
@@ -129,8 +134,13 @@ __all__ = [  # noqa: RUF022
     "daily_from_hourly",
     "penman_monteith",
     "penman_monteith_hourly",
+    "SoilSource",
+    "available_texture_classes",
     "readily_available_water",
+    "resolve_soil",
     "saxton_rawls",
+    "texture_class_names",
+    "texture_from_class",
     "total_available_water",
     # Water balance
     "WaterBalance",

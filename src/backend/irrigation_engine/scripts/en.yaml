@@ -29,10 +29,11 @@ acknowledge:
   water_given: "Yesterday you told us you watered the field."
   power_failed: "Yesterday you told us the power did not come."
 
+# The spoken times already carry their part of day, so these sentences must NOT
+# repeat it. Only the day is framed here: today needs no word, tomorrow does.
 power:
-  tonight: "Tonight power is from {start} to {end}."
-  tomorrow_morning: "Tomorrow morning power is from {start} to {end}."
-  today: "Today power is from {start} to {end}."
+  today: "Power is from {start} to {end}."
+  tomorrow: "Tomorrow power is from {start} to {end}."
   unreliable: "Power is not certain today."
 
 crop_needs_water: "The {crop} needs water."
@@ -63,3 +64,56 @@ question:
   did_you_water: "Did you water the field yesterday? Press one for yes, two for no."
 
 repeat: "Press one to hear this again."
+
+# --- Spoken clock times -------------------------------------------------------
+# A farmer-facing script contains NO DIGITS. Every time is spoken in words with
+# its part of day, because "6:00" does not tell a non-reader whether it is
+# morning or evening, and a text-to-speech voice handed a numeral renders it
+# unpredictably.
+#
+# Stop times and spoken durations are both rounded to five minutes, so the
+# vocabulary needed is small: twelve hours, twelve multiples of five, and the
+# quarter and half forms.
+time:
+  numbers:
+    1: one
+    2: two
+    3: three
+    4: four
+    5: five
+    6: six
+    7: seven
+    8: eight
+    9: nine
+    10: ten
+    11: eleven
+    12: twelve
+  # Every multiple of five, because a spoken DURATION may need 15, 30 or 45
+  # even though a clock time at those minutes uses the quarter and half
+  # forms below instead.
+  minutes:
+    5: five
+    10: ten
+    15: fifteen
+    20: twenty
+    25: twenty five
+    30: thirty
+    35: thirty five
+    45: forty five
+    40: forty
+    50: fifty
+    55: fifty five
+  part_of_day:
+    morning: in the morning
+    afternoon: in the afternoon
+    evening: in the evening
+    night: at night
+  # English says "quarter past" and "half past" rather than counting the
+  # minutes, so those forms are used for clock times.
+  uses_quarter_forms: true
+  forms:
+    oclock: "{hour} o'clock {part}"
+    quarter_past: "quarter past {hour} {part}"
+    half_past: "half past {hour} {part}"
+    quarter_to: "quarter to {next_hour} {part}"
+    minutes_past: "{minutes} minutes past {hour} {part}"
