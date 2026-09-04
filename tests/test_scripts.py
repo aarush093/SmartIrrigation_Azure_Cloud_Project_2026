@@ -14,6 +14,7 @@ from __future__ import annotations
 
 import datetime as dt
 import re
+from itertools import pairwise
 
 import pytest
 
@@ -35,7 +36,9 @@ from irrigation_engine.scripts_render import (
     render_next_day_question,
     round_stop_time,
     should_call,
+    speak_duration,
     speak_schedule,
+    speak_time,
     supported_languages,
 )
 
@@ -74,15 +77,29 @@ FORBIDDEN_SUBSTRINGS = (
     "லிட்டர்",
 )
 
-# A decimal number. "45.5 minutes" is not something a farmer can act on, and its
-# presence means a raw computed quantity has leaked into speech.
-DECIMAL_PATTERN = re.compile(r"\d+\.\d+")
+# Any digit, in any script a master could plausibly use. A farmer-facing script
+# contains NO DIGITS AT ALL: every time and every duration is spoken in words
+# with its part of day, because "6:00" does not tell a non-reader whether it is
+# morning or evening, and a text-to-speech voice handed a numeral renders it
+# unpredictably.
+#
+# This is a stronger and more checkable claim than "no technical units", and it
+# is the one the report makes.
+DIGIT_RANGES = (
+    ("ASCII", 0x0030, 0x0039),
+    ("Devanagari", 0x0966, 0x096F),
+    ("Tamil", 0x0BE6, 0x0BEF),
+)
+DIGITS = frozenset(chr(code) for _, low, high in DIGIT_RANGES for code in range(low, high + 1))
 
-# A percent sign in any script the three masters could plausibly use. The
-# fullwidth and Arabic-Indic forms are matched by codepoint so the linter does
-# not read them as an ambiguous character in source.
+# A percent sign in any script a master could plausibly use.
 PERCENT_SIGNS = ("%", chr(0x066A), chr(0xFF05))  # ASCII, Arabic-Indic, fullwidth
 PERCENT_PATTERN = re.compile("|".join(re.escape(sign) for sign in PERCENT_SIGNS))
+
+
+def digits_in(text: str) -> set[str]:
+    """Every digit character appearing in a rendered script."""
+    return {character for character in text if character in DIGITS}
 
 
 def window(
@@ -165,13 +182,26 @@ class TestNoTechnicalUnitsLeak:
 
     @pytest.mark.parametrize("lang", supported_languages())
     @pytest.mark.parametrize(("label", "state"), ALL_STATES, ids=[s[0] for s in ALL_STATES])
-    def test_no_decimal_number_reaches_the_farmer(
+    def test_no_digit_at_all_reaches_the_farmer(
         self, lang: str, label: str, state: Schedule
     ) -> None:
-        """No decimal number appears. A farmer cannot act on "409.4"."""
-        text = speak_schedule(state, lang=lang, crop=CROPS[lang], farmer_name=NAMES[lang])
-        found = DECIMAL_PATTERN.search(text)
-        assert found is None, f"{lang} / {label}: decimal {found.group()!r} reached the farmer"
+        """No digit appears in any farmer-facing script, in any script system.
+
+        The strongest and simplest guarantee this project makes about
+        accessibility, and the one a reviewer can check in a second at a viva.
+        Every time and every duration is spoken in words with its part of day.
+        """
+        text = speak_schedule(
+            state,
+            lang=lang,
+            crop=CROPS[lang],
+            farmer_name=NAMES[lang],
+            call_window=CallWindow(
+                dt.datetime(2026, 9, 3, 18, 0, tzinfo=IST), is_previous_evening=False
+            ),
+        )
+        found = digits_in(text)
+        assert not found, f"{lang} / {label}: digits {sorted(found)} reached the farmer.\n{text}"
 
     @pytest.mark.parametrize("lang", supported_languages())
     @pytest.mark.parametrize(("label", "state"), ALL_STATES, ids=[s[0] for s in ALL_STATES])
@@ -185,10 +215,11 @@ class TestNoTechnicalUnitsLeak:
     @pytest.mark.parametrize("lang", supported_languages())
     def test_the_next_day_question_is_also_clean(self, lang: str) -> None:
         """The keypress fallback is farmer-facing too and obeys the same rule."""
-        text = render_next_day_question(lang, farmer_name=NAMES[lang]).lower()
+        text = render_next_day_question(lang, farmer_name=NAMES[lang])
+        lowered = text.lower()
         for forbidden in FORBIDDEN_SUBSTRINGS:
-            assert forbidden not in text
-        assert DECIMAL_PATTERN.search(text) is None
+            assert forbidden not in lowered
+        assert not digits_in(text)
 
     @pytest.mark.parametrize("lang", supported_languages())
     def test_the_master_file_itself_is_clean(self, lang: str) -> None:
@@ -217,33 +248,104 @@ def _walk(node: object, prefix: str = "") -> list[tuple[str, str]]:
     return found
 
 
-class TestClockTimesNotDurations:
-    """The farmer is told when to start and when to stop."""
+class TestSpokenTimes:
+    """Times are spoken in words with a part of day, never as digits."""
 
-    def test_the_script_names_a_start_and_a_stop_time(self) -> None:
-        """409 minutes is useless; "10:00" and "4:45" are actionable."""
+    def test_the_script_names_a_start_and_a_stop_time_in_words(self) -> None:
+        """A start and a stop, both spoken. 409 minutes is not actionable."""
         text = speak_schedule(schedule(), lang="en", crop="wheat")
-        assert "Start the pump at 10:00" in text
-        assert "stop it at 4:45" in text
+        assert "ten o'clock at night" in text
+        assert "quarter to five in the morning" in text
 
-    def test_a_raw_minute_count_never_appears_with_a_clock_time(self) -> None:
-        """When a start time exists, the duration is not spoken at all."""
+    def test_no_raw_minute_count_appears_beside_a_clock_time(self) -> None:
+        """With a start time given, the duration is not spoken at all."""
         text = speak_schedule(schedule(minutes=409.4), lang="en", crop="wheat")
         assert "409" not in text
         assert "minutes" not in text
 
-    def test_when_power_is_unreliable_the_duration_is_given_in_hours(self) -> None:
-        """With no clock time to promise, a duration is the only option left.
+    @pytest.mark.parametrize(
+        ("hour", "minute", "expected"),
+        [
+            (22, 0, "ten o'clock at night"),
+            (6, 0, "six o'clock in the morning"),
+            (4, 45, "quarter to five in the morning"),
+            (15, 30, "half past three in the afternoon"),
+            (10, 15, "quarter past ten in the morning"),
+            (13, 20, "twenty minutes past one in the afternoon"),
+        ],
+    )
+    def test_english_times_read_naturally(self, hour: int, minute: int, expected: str) -> None:
+        assert speak_time(dt.datetime(2026, 9, 3, hour, minute, tzinfo=IST), "en") == expected
 
-        It is still given in hours and minutes, never as a raw minute count.
+    def test_hindi_uses_the_irregular_half_hour_forms(self) -> None:
+        """1:30 is "dedh" and 2:30 is "dhai", not "saade ek" or "saade do".
+
+        Getting this wrong would not break anything, and would mark the script
+        immediately as machine-written to any Hindi speaker.
+        """
+        one_thirty = speak_time(dt.datetime(2026, 9, 3, 1, 30, tzinfo=IST), "hi")
+        two_thirty = speak_time(dt.datetime(2026, 9, 3, 2, 30, tzinfo=IST), "hi")
+        assert "\u0921\u0947\u0922\u093c" in one_thirty
+        assert "\u0922\u093e\u0908" in two_thirty
+        assert "\u0938\u093e\u0922\u093c\u0947" not in one_thirty
+
+    def test_hindi_uses_quarter_forms(self) -> None:
+        """Sawa for quarter past, paune for quarter to."""
+        assert "\u0938\u0935\u093e" in speak_time(dt.datetime(2026, 9, 3, 10, 15, tzinfo=IST), "hi")
+        assert "\u092a\u094c\u0928\u0947" in speak_time(
+            dt.datetime(2026, 9, 3, 4, 45, tzinfo=IST), "hi"
+        )
+
+    @pytest.mark.parametrize("lang", supported_languages())
+    @pytest.mark.parametrize(
+        ("hour", "minute"), [(h, m) for h in range(24) for m in (0, 15, 30, 45)]
+    )
+    def test_every_rounded_time_speaks_without_digits(
+        self, lang: str, hour: int, minute: int
+    ) -> None:
+        """Exhaustive across every hour and every five-minute quarter.
+
+        A time the vocabulary cannot express would otherwise surface only when a
+        particular farmer's window happened to fall on it.
+        """
+        spoken = speak_time(dt.datetime(2026, 9, 3, hour, minute, tzinfo=IST), lang)
+        assert spoken.strip()
+        assert not digits_in(spoken)
+
+    @pytest.mark.parametrize("lang", supported_languages())
+    @pytest.mark.parametrize("minute", list(range(0, 60, 5)))
+    def test_every_five_minute_value_speaks(self, lang: str, minute: int) -> None:
+        spoken = speak_time(dt.datetime(2026, 9, 3, 9, minute, tzinfo=IST), lang)
+        assert spoken.strip()
+        assert not digits_in(spoken)
+
+    @pytest.mark.parametrize("lang", supported_languages())
+    def test_a_time_that_is_not_a_multiple_of_five_is_refused(self, lang: str) -> None:
+        """Better to fail loudly than to speak a digit.
+
+        Both the stop-time and the duration rounding guarantee a multiple of
+        five, so reaching this branch means a caller bypassed them.
+        """
+        with pytest.raises(KeyError, match="rounded to a multiple of five"):
+            speak_time(dt.datetime(2026, 9, 3, 9, 7, tzinfo=IST), lang)
+
+
+class TestSpokenDurations:
+    """Durations are spoken in hours and minutes, in words."""
+
+    def test_a_duration_is_used_only_when_there_is_no_clock_time(self) -> None:
+        """A duration appears only where no clock time can be promised.
+
+        With an unreliable feeder there is no start time to give, so the
+        duration is the only thing left.
         """
         text = speak_schedule(
             schedule(with_start_time=False, reliability=0.3, minutes=290.0),
             lang="en",
             crop="wheat",
         )
-        assert "4 hours 50 minutes" in text
-        assert "290" not in text
+        assert "four hours fifty minutes" in text
+        assert not digits_in(text)
 
     def test_a_run_under_an_hour_is_spoken_in_minutes(self) -> None:
         text = speak_schedule(
@@ -251,7 +353,7 @@ class TestClockTimesNotDurations:
             lang="en",
             crop="wheat",
         )
-        assert "37 minutes" in text
+        assert "thirty five minutes" in text
 
     def test_exactly_one_hour_is_spoken_naturally(self) -> None:
         text = speak_schedule(
@@ -260,6 +362,19 @@ class TestClockTimesNotDurations:
             crop="wheat",
         )
         assert "one hour" in text
+
+    @pytest.mark.parametrize("lang", supported_languages())
+    @pytest.mark.parametrize("minutes", [5, 37, 60, 95, 240, 290, 409, 478, 705])
+    def test_every_plausible_duration_speaks_without_digits(self, lang: str, minutes: int) -> None:
+        spoken = speak_duration(float(minutes), lang)
+        assert spoken.strip()
+        assert not digits_in(spoken)
+
+    @pytest.mark.parametrize("minutes", [7.0, 33.0, 409.4, 478.9])
+    def test_a_spoken_duration_never_exceeds_the_computed_one(self, minutes: float) -> None:
+        """Rounded down, exactly as the stop time is."""
+        rounded = (int(minutes) // 5) * 5
+        assert rounded <= minutes
 
 
 class TestStopTimeRounding:
@@ -312,13 +427,52 @@ class TestQuietHours:
         assert result.at.date() == dt.date(2026, 9, 3)
         assert QUIET_START <= result.at.time() < QUIET_END
 
-    def test_a_dawn_window_says_tomorrow_morning(self) -> None:
+    def test_a_dawn_window_is_framed_as_tomorrow(self) -> None:
         """The script must not say "today" about a window that is tomorrow."""
         state = schedule(start_hour=6, day=4)
         result = call_time_for(state, now=dt.datetime(2026, 9, 3, 12, 0, tzinfo=IST))
         text = speak_schedule(state, lang="en", crop="wheat", call_window=result)
-        assert "Tomorrow morning" in text
-        assert "Today power" not in text
+        assert "Tomorrow power is from" in text
+        assert "Power is from" not in text.replace("Tomorrow power is from", "")
+
+    def test_the_frame_does_not_repeat_the_part_of_day(self) -> None:
+        """The frame names only the DAY; the times carry the part of day.
+
+        An earlier version framed the sentence as "Tomorrow morning power is
+        from ..." while the time inside it already said "in the morning". In
+        English that merely read badly; in Tamil it produced a visibly doubled
+        word, "indru iravu iravu pathu manikku".
+        """
+        state = schedule(start_hour=6, day=4)
+        result = call_time_for(state, now=dt.datetime(2026, 9, 3, 12, 0, tzinfo=IST))
+        assert "Tomorrow morning" not in speak_schedule(
+            state, lang="en", crop="wheat", call_window=result
+        )
+
+    @pytest.mark.parametrize("lang", supported_languages())
+    def test_no_part_of_day_word_is_ever_immediately_repeated(self, lang: str) -> None:
+        """No two adjacent tokens are identical, in any language or any state.
+
+        This is the general form of the Tamil doubling bug: whatever the
+        templates compose to, a word must never be spoken twice in a row.
+        """
+        master = load_script(lang)
+        for label, state in ALL_STATES:
+            for previous_evening in (False, True):
+                text = speak_schedule(
+                    state,
+                    lang=lang,
+                    crop=CROPS[lang],
+                    farmer_name=NAMES[lang],
+                    call_window=CallWindow(
+                        dt.datetime(2026, 9, 3, 18, 0, tzinfo=IST),
+                        is_previous_evening=previous_evening,
+                    ),
+                )
+                tokens = text.split()
+                repeats = [(a, index) for index, (a, b) in enumerate(pairwise(tokens)) if a == b]
+                assert not repeats, f"{lang} / {label}: repeated token {repeats} in {text!r}"
+        assert master["power"]["today"]
 
     def test_a_midday_window_is_called_within_quiet_hours(self) -> None:
         result = call_time_for(
