@@ -1,0 +1,101 @@
+==============================================================================
+FARMER-FACING SCRIPT SAMPLES
+==============================================================================
+
+Every line below is what a farmer HEARS, spoken by Azure AI Speech.
+
+Please check, for Hindi and Tamil:
+  1. Is every word complete and correctly spelled?
+  2. Are the word boundaries right, nothing run together?
+  3. Is the register right for speaking to a farmer, not a bank customer?
+  4. Are the clock times natural? For example 'raat das baje', not '10:00'.
+  5. Would a listener know what to do after hearing it once?
+
+There are deliberately NO DIGITS anywhere. Every time and duration is
+spoken in words with its part of day, because a non-reader cannot tell
+whether '6:00' means morning or evening.
+
+------------------------------------------------------------------------------
+CASE 1: Night feeder, clock time given, field is dry
+  Situation: Power tonight 22:00 to 06:00. Run the pump from 22:00 for about 6h 49m.
+------------------------------------------------------------------------------
+  [en] Ram, hello. Power is from ten o'clock at night to six o'clock in the morning. The wheat needs water. Start the pump at ten o'clock at night, and stop it at quarter to five in the morning. The field is dry. Press one to hear this again.
+  [hi] राम काका, नमस्ते। बिजली रात दस बजे से सुबह छह बजे तक है। गेहूँ को पानी चाहिए। रात दस बजे पंप चालू करो, और सुबह पौने पाँच बजे बंद कर दो। खेत सूखा है। दोबारा सुनने के लिए एक दबाओ।
+  [ta] முருகன், வணக்கம். இரவு பத்து மணிக்கு முதல் காலை ஆறு மணிக்கு வரை மின்சாரம் இருக்கும். கோதுமை பயிருக்கு தண்ணீர் தேவை. இரவு பத்து மணிக்கு பம்ப் ஆன் செய்யுங்கள், காலை நான்கு மணி நாற்பத்தைந்து நிமிடத்திற்கு நிறுத்துங்கள். நிலம் வறண்டு இருக்கிறது. மீண்டும் கேட்க ஒன்று அழுத்துங்கள்.
+
+------------------------------------------------------------------------------
+CASE 2: Same, after the farmer reported he watered yesterday
+  Situation: Opens by acknowledging his missed call, which is the only confirmation he gets.
+------------------------------------------------------------------------------
+  [en] Ram, hello. Yesterday you told us you watered the field. Power is from ten o'clock at night to six o'clock in the morning. The wheat needs water. Start the pump at ten o'clock at night, and stop it at quarter to five in the morning. The field is dry. Press one to hear this again.
+  [hi] राम काका, नमस्ते। कल आपने बताया था कि पानी दे दिया। बिजली रात दस बजे से सुबह छह बजे तक है। गेहूँ को पानी चाहिए। रात दस बजे पंप चालू करो, और सुबह पौने पाँच बजे बंद कर दो। खेत सूखा है। दोबारा सुनने के लिए एक दबाओ।
+  [ta] முருகன், வணக்கம். நேற்று நீங்கள் தண்ணீர் பாய்ச்சியதாக சொன்னீர்கள். இரவு பத்து மணிக்கு முதல் காலை ஆறு மணிக்கு வரை மின்சாரம் இருக்கும். கோதுமை பயிருக்கு தண்ணீர் தேவை. இரவு பத்து மணிக்கு பம்ப் ஆன் செய்யுங்கள், காலை நான்கு மணி நாற்பத்தைந்து நிமிடத்திற்கு நிறுத்துங்கள். நிலம் வறண்டு இருக்கிறது. மீண்டும் கேட்க ஒன்று அழுத்துங்கள்.
+
+------------------------------------------------------------------------------
+CASE 3: Same, after he reported the power did not come
+  Situation: Opens by acknowledging the power failure he reported.
+------------------------------------------------------------------------------
+  [en] Ram, hello. Yesterday you told us the power did not come. Power is from ten o'clock at night to six o'clock in the morning. The wheat needs water. Start the pump at ten o'clock at night, and stop it at quarter to five in the morning. The field is dry. Press one to hear this again.
+  [hi] राम काका, नमस्ते। कल आपने बताया था कि बिजली नहीं आई। बिजली रात दस बजे से सुबह छह बजे तक है। गेहूँ को पानी चाहिए। रात दस बजे पंप चालू करो, और सुबह पौने पाँच बजे बंद कर दो। खेत सूखा है। दोबारा सुनने के लिए एक दबाओ।
+  [ta] முருகன், வணக்கம். நேற்று மின்சாரம் வரவில்லை என்று சொன்னீர்கள். இரவு பத்து மணிக்கு முதல் காலை ஆறு மணிக்கு வரை மின்சாரம் இருக்கும். கோதுமை பயிருக்கு தண்ணீர் தேவை. இரவு பத்து மணிக்கு பம்ப் ஆன் செய்யுங்கள், காலை நான்கு மணி நாற்பத்தைந்து நிமிடத்திற்கு நிறுத்துங்கள். நிலம் வறண்டு இருக்கிறது. மீண்டும் கேட்க ஒன்று அழுத்துங்கள்.
+
+------------------------------------------------------------------------------
+CASE 4: Morning feeder, called the previous evening
+  Situation: Power 07:30 to 15:30 TOMORROW. The script must say tomorrow morning, not today.
+------------------------------------------------------------------------------
+  [en] Ram, hello. Tomorrow power is from seven o'clock in the morning to three o'clock in the afternoon. The wheat needs water. Start the pump at seven o'clock in the morning, and stop it at quarter to two in the afternoon. There is not much power time, so do not wait. Press one to hear this again.
+  [hi] राम काका, नमस्ते। कल बिजली सुबह सात बजे से दोपहर तीन बजे तक है। गेहूँ को पानी चाहिए। सुबह सात बजे पंप चालू करो, और दोपहर पौने दो बजे बंद कर दो। बिजली का समय कम है, इसलिए देर मत करो। दोबारा सुनने के लिए एक दबाओ।
+  [ta] முருகன், வணக்கம். நாளை காலை ஏழு மணிக்கு முதல் மதியம் மூன்று மணிக்கு வரை மின்சாரம் இருக்கும். கோதுமை பயிருக்கு தண்ணீர் தேவை. காலை ஏழு மணிக்கு பம்ப் ஆன் செய்யுங்கள், மதியம் ஒன்று மணி நாற்பத்தைந்து நிமிடத்திற்கு நிறுத்துங்கள். மின்சார நேரம் குறைவு, அதனால் தாமதிக்க வேண்டாம். மீண்டும் கேட்க ஒன்று அழுத்துங்கள்.
+
+------------------------------------------------------------------------------
+CASE 5: Unreliable feeder, no clock time can be promised
+  Situation: Reliability below threshold. Says 'when the power comes' with a duration instead.
+------------------------------------------------------------------------------
+  [en] Ram, hello. Power is not certain today. The wheat needs water. When the power comes, start the pump and run it for four hours fifty minutes, then stop. The field is dry. Press one to hear this again.
+  [hi] राम काका, नमस्ते। आज बिजली का पक्का नहीं है। गेहूँ को पानी चाहिए। जब बिजली आए तो पंप चालू करो, चार घंटे पचास मिनट चलाओ, फिर बंद कर दो। खेत सूखा है। दोबारा सुनने के लिए एक दबाओ।
+  [ta] முருகன், வணக்கம். இன்று மின்சாரம் உறுதியாக தெரியவில்லை. கோதுமை பயிருக்கு தண்ணீர் தேவை. மின்சாரம் வந்ததும் பம்ப் ஆன் செய்து நான்கு மணி ஐம்பது நிமிடம் ஓட விடுங்கள், பிறகு நிறுத்துங்கள். நிலம் வறண்டு இருக்கிறது. மீண்டும் கேட்க ஒன்று அழுத்துங்கள்.
+
+------------------------------------------------------------------------------
+CASE 6: Window too short, run is truncated
+  Situation: Only four hours of power. Runs the whole window and explains the rest follows.
+------------------------------------------------------------------------------
+  [en] Ram, hello. Power is from ten o'clock at night to two o'clock at night. The wheat needs water. Start the pump at ten o'clock at night, and stop it at two o'clock at night. The field is dry. The power time is short, so we will finish the rest next time. Press one to hear this again.
+  [hi] राम काका, नमस्ते। बिजली रात दस बजे से रात दो बजे तक है। गेहूँ को पानी चाहिए। रात दस बजे पंप चालू करो, और रात दो बजे बंद कर दो। खेत सूखा है। बिजली का समय कम है, बाकी अगली बार पूरा करेंगे। दोबारा सुनने के लिए एक दबाओ।
+  [ta] முருகன், வணக்கம். இரவு பத்து மணிக்கு முதல் இரவு இரண்டு மணிக்கு வரை மின்சாரம் இருக்கும். கோதுமை பயிருக்கு தண்ணீர் தேவை. இரவு பத்து மணிக்கு பம்ப் ஆன் செய்யுங்கள், இரவு இரண்டு மணிக்கு நிறுத்துங்கள். நிலம் வறண்டு இருக்கிறது. மின்சார நேரம் குறைவு, மீதியை அடுத்த முறை முடிப்போம். மீண்டும் கேட்க ஒன்று அழுத்துங்கள்.
+
+------------------------------------------------------------------------------
+CASE 7: Opportunistic top-up while power is available
+  Situation: Field is not yet stressed, but there is power, so top it up.
+------------------------------------------------------------------------------
+  [en] Ram, hello. Power is from ten o'clock at night to six o'clock in the morning. The wheat needs water. Start the pump at ten o'clock at night, and stop it at quarter to five in the morning. There is power time, so give it water. Press one to hear this again.
+  [hi] राम काका, नमस्ते। बिजली रात दस बजे से सुबह छह बजे तक है। गेहूँ को पानी चाहिए। रात दस बजे पंप चालू करो, और सुबह पौने पाँच बजे बंद कर दो। बिजली है, इसलिए पानी दे दो। दोबारा सुनने के लिए एक दबाओ।
+  [ta] முருகன், வணக்கம். இரவு பத்து மணிக்கு முதல் காலை ஆறு மணிக்கு வரை மின்சாரம் இருக்கும். கோதுமை பயிருக்கு தண்ணீர் தேவை. இரவு பத்து மணிக்கு பம்ப் ஆன் செய்யுங்கள், காலை நான்கு மணி நாற்பத்தைந்து நிமிடத்திற்கு நிறுத்துங்கள். மின்சாரம் இருக்கிறது, தண்ணீர் பாய்ச்சுங்கள். மீண்டும் கேட்க ஒன்று அழுத்துங்கள்.
+
+------------------------------------------------------------------------------
+CASE 8: Short run, under an hour
+  Situation: A small deficit on a strong pump.
+------------------------------------------------------------------------------
+  [en] Ram, hello. Power is not certain today. The wheat needs water. When the power comes, start the pump and run it for thirty five minutes, then stop. The field is dry. Press one to hear this again.
+  [hi] राम काका, नमस्ते। आज बिजली का पक्का नहीं है। गेहूँ को पानी चाहिए। जब बिजली आए तो पंप चालू करो, पैंतीस मिनट चलाओ, फिर बंद कर दो। खेत सूखा है। दोबारा सुनने के लिए एक दबाओ।
+  [ta] முருகன், வணக்கம். இன்று மின்சாரம் உறுதியாக தெரியவில்லை. கோதுமை பயிருக்கு தண்ணீர் தேவை. மின்சாரம் வந்ததும் பம்ப் ஆன் செய்து முப்பத்தைந்து நிமிடம் ஓட விடுங்கள், பிறகு நிறுத்துங்கள். நிலம் வறண்டு இருக்கிறது. மீண்டும் கேட்க ஒன்று அழுத்துங்கள்.
+
+------------------------------------------------------------------------------
+CASE 9: Skip: rain is expected
+  Situation: Do not run the pump. No window is named because none is being used.
+------------------------------------------------------------------------------
+  [en] Ram, hello. Do not run the pump today. Rain is expected. If the rain does not come, we will call you again. Press one to hear this again.
+  [hi] राम काका, नमस्ते। आज पंप मत चलाओ। बारिश आने वाली है। अगर बारिश नहीं आई तो हम फिर फोन करेंगे। दोबारा सुनने के लिए एक दबाओ।
+  [ta] முருகன், வணக்கம். இன்று பம்ப் ஓட்ட வேண்டாம். மழை வரப்போகிறது. மழை வரவில்லை என்றால் நாங்கள் மீண்டும் அழைப்போம். மீண்டும் கேட்க ஒன்று அழுத்துங்கள்.
+
+------------------------------------------------------------------------------
+CASE 10: Next-day question, asked when no missed call arrived
+  Situation: The keypress fallback. Never the primary channel.
+------------------------------------------------------------------------------
+  [en] Ram, hello. Did you water the field yesterday? Press one for yes, two for no.
+  [hi] राम काका, नमस्ते। कल पानी दिया? हाँ के लिए एक दबाओ, नहीं के लिए दो दबाओ।
+  [ta] முருகன், வணக்கம். நேற்று தண்ணீர் பாய்ச்சினீர்களா? ஆம் என்றால் ஒன்று அழுத்துங்கள், இல்லை என்றால் இரண்டு.
+
+==============================================================================
+Until a native speaker has read this file, the Hindi and Tamil masters
+remain marked TODO [VERIFY native speaker] and the report says so.
+==============================================================================
