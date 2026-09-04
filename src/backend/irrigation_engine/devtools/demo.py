@@ -44,7 +44,12 @@ from irrigation_engine.scheduler import (
     plan_day,
 )
 from irrigation_engine.scripts_render import call_time_for, should_call, speak_schedule
-from irrigation_engine.soil import saxton_rawls, total_available_water
+from irrigation_engine.soil import (
+    SoilSource,
+    resolve_soil,
+    saxton_rawls,
+    total_available_water,
+)
 from irrigation_engine.telephony import FakeSpeech, SimulatedTelephony
 
 __all__ = ["PILOT_FARMERS", "DemoFarmer", "main", "run_demo"]
@@ -69,6 +74,9 @@ class DemoFarmer:
     sowing_date: dt.date
     rotation: DeclaredRotation
     initial_depletion_mm: float
+    #: What the farmer said about his own soil at onboarding. Primary input;
+    #: SoilGrids only prefills it. See params/soil_texture_classes.yaml.
+    declared_soil: str
 
 
 def _night_rotation(anchor: dt.date, *, night_first: bool = True) -> DeclaredRotation:
@@ -99,6 +107,27 @@ def _daytime_solar(anchor: dt.date) -> DeclaredRotation:
 
 ANCHOR = dt.date(2026, 9, 1)
 
+# The three pilot farmers from plan Section 12.
+#
+# Crop, sowing date and district are chosen so that each is genuinely plausible
+# on the demonstration date in early September, because an agriculture-literate
+# reviewer will check exactly that and a wrong one would undermine everything
+# correct behind it.
+#
+#   Vellore, Tamil Nadu   GROUNDNUT, kharif, sown mid-June. Groundnut is widely
+#                         grown in the northern Tamil Nadu districts; wheat is
+#                         not grown there at all, and is in any case a rabi crop
+#                         sown in November. By 4 September a mid-June sowing is
+#                         about 80 days old, which is mid-season.
+#
+#   Beed, Maharashtra     COTTON, kharif, sown mid-June with the monsoon. Beed
+#                         is in the Marathwada cotton belt. About 80 days old on
+#                         the demonstration date, which is mid-season.
+#
+#   Ludhiana, Punjab      RICE, kharif, transplanted late June. Punjab paddy is
+#                         transplanted from mid-June once the canal and tubewell
+#                         supply allows. About 70 days old, which is mid-season,
+#                         and the highest-demand point of the crop.
 PILOT_FARMERS = (
     DemoFarmer(
         farmer_id="farmer-vellore-01",
@@ -106,16 +135,17 @@ PILOT_FARMERS = (
         village="Vellore, Tamil Nadu",
         phone="+919000000001",
         language="ta",
-        crop="wheat",
-        crop_spoken="கோதுமை",
+        crop="groundnut",
+        crop_spoken="\u0b95\u0b9f\u0bb2\u0bc8",
         latitude=12.97,
         longitude=79.16,
         area_m2=4047.0,
         method=IrrigationMethod.FURROW,
         pump=PumpSpec(hp=5.0, head_m=30.0, eta=0.5),
-        sowing_date=dt.date(2026, 7, 1),
+        sowing_date=dt.date(2026, 6, 16),
         rotation=_night_rotation(ANCHOR, night_first=False),
-        initial_depletion_mm=48.0,
+        initial_depletion_mm=32.0,
+        declared_soil="sandy",
     ),
     DemoFarmer(
         farmer_id="farmer-beed-01",
@@ -124,16 +154,18 @@ PILOT_FARMERS = (
         phone="+919000000002",
         language="hi",
         crop="cotton",
-        crop_spoken="कपास",
+        crop_spoken="\u0915\u092a\u093e\u0938",
         latitude=18.99,
         longitude=75.76,
         area_m2=8094.0,
         method=IrrigationMethod.FLOOD,
         pump=PumpSpec(hp=7.5, head_m=45.0, eta=0.5),
         sowing_date=dt.date(2026, 6, 15),
-        # A daytime solar feeder, as in the ADB Maharashtra programme.
+        # A daytime solar feeder, as in the ADB Maharashtra solarisation
+        # programme referenced in plan Section 2.
         rotation=_daytime_solar(ANCHOR),
-        initial_depletion_mm=62.0,
+        initial_depletion_mm=58.0,
+        declared_soil="clayey",
     ),
     DemoFarmer(
         farmer_id="farmer-ludhiana-01",
@@ -142,23 +174,18 @@ PILOT_FARMERS = (
         phone="+919000000003",
         language="hi",
         crop="rice",
-        crop_spoken="धान",
+        crop_spoken="\u0927\u093e\u0928",
         latitude=30.90,
         longitude=75.86,
         area_m2=12141.0,
         method=IrrigationMethod.FLOOD,
         pump=PumpSpec(hp=10.0, head_m=40.0, eta=0.5),
-        sowing_date=dt.date(2026, 6, 20),
+        sowing_date=dt.date(2026, 6, 25),
         # An eight-hour rotation, night shift this week.
         rotation=_night_rotation(ANCHOR, night_first=True),
-        initial_depletion_mm=35.0,
+        initial_depletion_mm=22.0,
+        declared_soil="loamy",
     ),
-)
-
-# Used when SoilGrids is unreachable, which its own documentation warns about.
-# A medium loam: the demo degrades rather than failing in front of a reviewer.
-FALLBACK_SOIL = SoilProfile(
-    sand=0.40, silt=0.40, clay=0.20, organic_carbon=0.010, bulk_density=1.35
 )
 
 
@@ -197,7 +224,12 @@ def run_demo(*, today: dt.date, offline: bool = False, out_dir: Path | None = No
         print(f"--- {farmer.name}, {farmer.village} ({farmer.crop}, {farmer.language})")
 
         weather = _fetch_weather(weather_provider, farmer, today)
-        soil = _fetch_soil(soil_provider, farmer)
+        prefill = _fetch_soil(soil_provider, farmer)
+        soil, soil_source = resolve_soil(
+            declared_class=farmer.declared_soil, soilgrids_profile=prefill
+        )
+        if soil_source is SoilSource.FALLBACK:
+            print("  WARNING:   soil is a GUESS. Ask the farmer before trusting the depth.")
 
         constants = saxton_rawls(soil)
         stage = crop_calendar(farmer.crop, farmer.sowing_date, today)
@@ -229,7 +261,7 @@ def run_demo(*, today: dt.date, offline: bool = False, out_dir: Path | None = No
         windows = farmer.rotation.windows(planning_instant, days=3)
         schedule = plan_day(field_state, today=today, windows=windows, forecast_etc_mm=etc)
 
-        _print_state(constants, stage, taw, field_state, schedule)
+        _print_state(constants, soil_source, stage, taw, field_state, schedule)
 
         if not should_call(schedule):
             print("  call:      none. Nothing is being asked of the farmer today.")
@@ -283,22 +315,26 @@ def _fetch_weather(
     ]
 
 
-def _fetch_soil(provider: SoilGridsProvider | None, farmer: DemoFarmer) -> SoilProfile:
-    """Fetch the soil profile, falling back to a medium loam.
+def _fetch_soil(provider: SoilGridsProvider | None, farmer: DemoFarmer) -> SoilProfile | None:
+    """Try SoilGrids as a PREFILL for the farmer's declared texture.
 
-    SoilGrids documents its REST API as intermittently paused, so the fallback
-    is a design requirement rather than defensive coding.
+    Returns None where it is unavailable, which on 3 September 2026 was every
+    pilot point. The farmer's own answer is the primary input and stands on its
+    own; see ``params/soil_texture_classes.yaml`` for why that is the better
+    design and not merely a workaround.
     """
-    if provider is not None:
-        try:
-            return provider.fetch_soil(farmer.latitude, farmer.longitude)
-        except Exception as error:
-            print(f"  note:      SoilGrids unavailable ({error}); using a medium loam")
-    return FALLBACK_SOIL
+    if provider is None:
+        return None
+    try:
+        return provider.fetch_soil(farmer.latitude, farmer.longitude)
+    except Exception as error:  # a demo must not die on a bad point
+        print(f"  note:      SoilGrids prefill unavailable ({error}); the farmer's answer stands")
+        return None
 
 
 def _print_state(
     constants: SoilWaterConstants,
+    source: SoilSource,
     stage: CropStage,
     taw_mm: float,
     state: FieldState,
@@ -311,7 +347,7 @@ def _print_state(
     ``speak_schedule``, and a test enforces that none of these units reach it.
     """
     print(
-        f"  soil:      field capacity {constants.theta_fc:.3f}, "
+        f"  soil:      {source.value}, field capacity {constants.theta_fc:.3f}, "
         f"wilting point {constants.theta_wp:.3f} m3/m3"
     )
     print(
