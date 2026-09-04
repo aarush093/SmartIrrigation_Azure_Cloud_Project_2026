@@ -42,3 +42,26 @@ allocation:
   # identical order. Determinism is what makes the property tests and the
   # two-season simulation reproducible.
   tie_break: field_id
+
+# --- Part of day, for spoken clock times -------------------------------------
+# A farmer who cannot read does not know whether "6:00" is morning or evening,
+# so every spoken time carries a part of day. Boundaries are stated here rather
+# than inline so the convention is inspectable and changeable per district.
+#
+# Convention chosen: aligned to the working day of an Indian cultivator rather
+# than to astronomical dawn. Morning starts at 04:00 because a night feeder
+# closing at 06:00 must still be described as morning; night starts at 20:00
+# because a 22:00 window is unambiguously "raat".
+#
+# TODO [VERIFY] with the pilot farmers: whether "shaam" or "raat" is the natural
+# word for 19:00 varies by region and season.
+part_of_day:
+  morning_start: 4     # 04:00 to 11:59  subah / kaalai
+  afternoon_start: 12  # 12:00 to 15:59  dopahar / madhiyam
+  evening_start: 16    # 16:00 to 19:59  shaam / maalai
+  night_start: 20      # 20:00 to 03:59  raat / iravu
+
+# Spoken durations are rounded down to this many minutes, exactly as stop times
+# are. It keeps the spoken vocabulary to multiples of five, and rounding down
+# never asks the farmer to run the pump longer than computed.
+spoken_duration_rounding_minutes: 5
