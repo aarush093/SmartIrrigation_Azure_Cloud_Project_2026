@@ -2,7 +2,10 @@
 
 **Date:** 3 September 2026
 **Author:** Aarush Pandit (23BIT0416)
-**Status:** Mechanism confirmed viable. Hosting decided: consumption plan (Decision 1, section 3).
+**Status:** Mechanism confirmed viable and implemented. Hosting decided: consumption
+plan (Decision 1). **A live Indian phone number cannot be provisioned on this
+subscription** (section 5); the demonstration path is the simulated telephony
+console, permanently.
 
 The entire illiteracy-first design rests on one assumption: that an inbound call
 can be detected and refused *without being answered*, so that the farmer is never
@@ -145,7 +148,7 @@ tha ki paani de diya". Zero marginal cost, carried on a call that was happening
 anyway, and it gives him the chance to correct us if we logged the wrong thing.
 Implemented as an optional opening clause in ``speak_schedule``.
 
-## 3. Consequences already absorbed into the M3 design
+## 4. Consequences already absorbed into the M3 design
 
 These do not need a ruling and are being implemented now.
 
@@ -174,11 +177,69 @@ with the next day's confirmation question. The demo runs in either mode.
 
 ---
 
-## 4. Outstanding verification before the pilot
+## 5. Stated limitation: no live phone number on this subscription
 
-- `TODO [VERIFY]` ACS PSTN number availability for India, and whether inbound
-  Indian numbers can be provisioned on the student subscription at all.
-- `TODO [VERIFY]` that a rejected inbound call accrues no charge, to the farmer
-  or to us, against the current ACS pricing page.
+This is no longer a risk to be mitigated. It is a settled constraint, checked
+against Microsoft's own documentation, and it is stated as a limitation in the
+report rather than left as an open item.
+
+**Two independent blockers, either one decisive.**
+
+1. **India is not in the country and region list for Communication Services
+   telephone numbers.** The published list runs from Argentina through the
+   United States; India does not appear in it.
+2. **Phone numbers cannot be acquired on trial accounts or with Azure free
+   credits**, and availability is restricted to subscriptions whose billing
+   address is in a supported region. An Azure for Students subscription with an
+   Indian billing address fails both halves of that condition.
+
+Communication Services **SMS** is documented as supporting United States numbers
+with other geographies not yet supported, so the Phase-I SMS fallback cannot be
+demonstrated live either. Both the primary voice channel and its text fallback
+are blocked by the same restriction, for the same reason, and not by anything in
+this design.
+
+### Why the system is unaffected
+
+**The adapter interface exists because this was a known regulatory risk from the
+start.** Plan Section 15 lists ACS number availability as a risk with the
+mitigation "build behind an adapter; demo with the simulated telephony console".
+That mitigation was implemented before the blocker was confirmed, which is why
+confirming it changes nothing about what runs.
+
+`SimulatedTelephony` drives the complete daily loop with **no phone number, no
+ACS resource and no credit spend**: forecast pull, soil resolution, water
+balance, power-window scheduling, script rendering in three languages, speech
+synthesis (faked or real), the outbound call, and all three missed-call events
+through the browser console. That is the demonstration path, permanently, not a
+degraded mode.
+
+`AcsCallAutomationTelephony` stays exactly as written and tested. It is the
+evidence that the Azure integration was designed correctly against the real
+API: the `IncomingCall` event shape, the pre-answer availability of
+`data.from` and `data.to`, the `Reject` action, subscription validation, and
+at-least-once delivery are all handled as Microsoft documents them.
+
+### Production route, if the pilot proceeds
+
+An Indian CPaaS operating under TRAI's DLT registration, such as Exotel,
+Gupshup, Kaleyra or Twilio's India offering, would be a **new
+`TelephonyAdapter` implementation and a configuration change**. Not a redesign:
+the engine, the scheduler, the scripts, the state machine and the Functions app
+are all unchanged, because none of them knows which adapter it is talking to.
+
+That route is deliberately **not built**. Building a second telephony
+integration that also cannot be demonstrated on this subscription would add
+untested code and no evidence.
+
+---
+
+## 6. Outstanding verification before a pilot
+
+- Resolved, see section 5: Indian numbers cannot be provisioned on this
+  subscription, and the demonstration runs without one.
+- `TODO [VERIFY]` that a rejected inbound call accrues no charge, on whichever
+  provider a pilot actually uses. The question survives the move away from ACS,
+  because the whole channel depends on the missed call being free to the farmer.
 - `TODO [VERIFY]` TRAI TCCCPR 2018 position on consented transactional automated
   calls, and permitted calling hours.
