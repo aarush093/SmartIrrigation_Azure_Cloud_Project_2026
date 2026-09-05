@@ -181,11 +181,13 @@ over two seasons (2024 and 2025): 18 field-seasons per policy.
 
 | File | Contents |
 |---|---|
-| `objective6_policy_comparison.csv` | Per policy, per field, per season |
+| `objective6_policy_comparison.csv` | Per policy, per field, per season, with a `ponded` column |
+| `objective6_skip_threshold_sensitivity.csv` | P3 at four rain-skip confidence thresholds |
 | `objective6_water_vs_stress.png` | The trade-off, in one picture |
 | `objective6_by_policy.png` | Each metric relative to the P1 baseline |
+| `objective6_skip_threshold.png` | How little the skip threshold changes the outcome |
 
-### Method, and the two things that would have invalidated it
+### Method, and the three things that would have invalidated it
 
 **The baseline was corrected before the run.** An unconstrained FAO-56 trigger
 assumes the pump can run whenever the crop wants water, which is impossible on a
@@ -200,59 +202,139 @@ the Open-Meteo Previous Runs API, which reaches back beyond both simulated
 seasons. Had the skip rule read the archive it would have been skipping on rain
 it already knew had fallen, and the whole result would be worthless.
 
-Two defects were found and fixed during the run, both of which had inflated the
-scheduler's water use:
+**Rice is reported but excluded from the headline.** `params/crops.yaml` records
+for rice that "a ponded-paddy mode is a Phase-III item": a depletion-triggered
+balance is the wrong model for a crop that is deliberately kept ponded. Three of
+the nine fields are rice, including the largest in the set, so including them
+would let a model the project itself disowns for that crop dominate every
+number. The headline set is therefore the **six non-ponded fields**, and the
+all-nine figure is printed beside every claim. The rice rows are below, and they
+are visibly incoherent — P0 uses the least water and the unachievable Pref the
+most — which is the evidence that the exclusion is right rather than convenient.
+
+### Defects found and fixed
+
+Four, across two runs. Each inflated the scheduler's apparent water use, so the
+uncorrected result would have been a worse one reported honestly rather than a
+better one reported dishonestly. That does not make it acceptable.
 
 1. **Phantom carry-over.** When the scheduler planned into a window on a later
-   day, the simulation still recorded the shortfall of that unperformed run as
-   carry-over. The next day added it to a depletion that already contained the
-   same shortfall, double-counting the deficit.
+   day, the simulation recorded the shortfall of that unperformed run as
+   carry-over, and the next day added it to a depletion that already contained
+   the same shortfall.
 2. **A flattered baseline.** P0 was applying a need-based depth, which is not
    what "fixed interval, fixed depth" means. Traditional practice is "when the
    power comes on my day, run the pump until it goes off", so P0 now applies
    whatever one full window delivers, regardless of need.
+3. **Carry-over double-counted against depletion.** The same class as (1), in the
+   branch (1) did not reach. `plan_day` computed the requirement as
+   `depletion + carry_over`, while the balance was stepped with the depth
+   actually *delivered*, so the undelivered part of a truncated run sat in the
+   depletion **and** was added on top of it the next morning. This was in the
+   **engine**, not only the simulation: a real farmer would have been told to
+   over-irrigate the morning after every truncated run.
+
+   Measured directly, by running P2 twice over identical data with nothing else
+   changed:
+
+   | P2 arm | Water (mm) | Deep percolation (mm) | Stress days |
+   |---|---:|---:|---:|
+   | `required = depletion + carry_over` | 8,961 | 7,685 | 312 |
+   | `required = depletion` | 7,493 | 6,233 | 341 |
+   | *Pref, unlimited power (reference)* | *6,920* | *5,829* | *277* |
+
+   The double count was **1,467 mm of water and 1,452 mm of deep percolation**:
+   99 percent of the water it added drained straight past the root zone, because
+   the root zone could not hold it. The signature — a constrained policy applying
+   far more than the unconstrained one, with nearly all the excess percolating —
+   is now checked on every run and printed as a warning, so this cannot recur
+   silently. `tests/scheduler/test_truncated_run_accounting.py` pins the
+   invariant in the engine.
+
+4. **A skipped balance step.** When the forecast was unavailable the policy loop
+   advanced the day without stepping the water balance at all, so that day's ETc
+   and rain never reached the depletion and the next morning planned from a stale
+   root zone. The loop now falls through to the balance step with no irrigation,
+   and asserts that every simulated day steps the balance exactly once under
+   every policy.
 
 ### Results
 
-Totals over 18 field-seasons.
+Totals over 12 field-seasons: **six non-ponded fields, two seasons.**
+
+| Policy | Water (mm) | Stress days | Pump hours | Energy (kWh) | Deep percolation (mm) |
+|---|---:|---:|---:|---:|---:|
+| P0 calendar | 6,362 | 631 | 2,424 | 12,202 | 7,605 |
+| **P1 advisory, power constrained** | **4,435** | **576** | **2,141** | **10,895** | **4,212** |
+| P2 power-window scheduler | 5,873 | 95 | 2,919 | 15,492 | 4,992 |
+| **P3 scheduler + rain skip** | **5,740** | **96** | **2,854** | **15,136** | **4,859** |
+| *Pref unlimited power* | *5,048* | *116* | *2,475* | *12,910* | *4,431* |
+
+*Pref is **physically unachievable**: it assumes power on demand. It is a bound
+on power availability, **not** an agronomic optimum — it waits until depletion
+reaches RAW before acting, which is why P3, whose capacity-limit branch refills
+earlier, reaches fewer stress days than it does.*
+
+All nine fields including rice, for completeness:
 
 | Policy | Water (mm) | Stress days | Pump hours | Energy (kWh) | Deep percolation (mm) |
 |---|---:|---:|---:|---:|---:|
 | P0 calendar | 7,776 | 1,001 | 3,032 | 15,603 | 8,998 |
-| **P1 advisory, power constrained** | **6,141** | **846** | **2,959** | **15,942** | **5,547** |
-| P2 power-window scheduler | 8,961 | 312 | 4,513 | 24,976 | 7,685 |
-| P3 scheduler + rain skip | 8,852 | 320 | 4,463 | 24,683 | 7,593 |
+| P1 advisory, power constrained | 6,141 | 846 | 2,959 | 15,942 | 5,547 |
+| P2 power-window scheduler | 7,493 | 341 | 3,704 | 20,380 | 6,233 |
+| P3 scheduler + rain skip | 7,261 | 361 | 3,582 | 19,617 | 6,016 |
 | *Pref unlimited power* | *6,920* | *277* | *3,369* | *18,418* | *5,829* |
 
-*Pref is **physically unachievable**: it assumes power on demand. It is a
-reference bound, not a policy anyone could follow.*
+Rice alone, three fields, **not used for any claim**:
+
+| Policy | Water (mm) | Stress days | Deep percolation (mm) |
+|---|---:|---:|---:|
+| P0 calendar | 1,414 | 370 | 1,393 |
+| P1 advisory, power constrained | 1,706 | 270 | 1,336 |
+| P2 power-window scheduler | 1,621 | 246 | 1,241 |
+| P3 scheduler + rain skip | 1,522 | 265 | 1,156 |
+| *Pref unlimited power* | *1,872* | *161* | *1,398* |
+
+Read that table as a warning rather than a result. The unachievable ideal applies
+the *most* water and fixed-interval practice the least, which is not a ranking any
+irrigation model should produce. Rice takes p = 0.20, so RAW is small and the
+trigger fires almost continuously; the depletion model is simply the wrong
+instrument for a ponded field, exactly as `crops.yaml` says.
 
 ### Objective 6 as written: NOT MET
 
-The criterion is at least 20 percent less water than fixed-interval irrigation.
-**P3 applies 13.8 percent more water than P0, not less.** The objective is not
-met and the number is reported as measured.
+The criterion is at least 20 percent less water than fixed-interval irrigation,
+with no increase in stress days.
 
-On the other two metrics against the same baseline, P3 reaches **68.0 percent
-fewer stress days** and **15.6 percent less deep percolation**. Traditional
-practice both over-waters and under-delivers: P0 has the highest percolation of
-any policy *and* the most stress days, because a fixed depth on a fixed interval
-is the wrong amount at the wrong time in both directions.
+**P3 applies 9.8 percent less water than P0.** The direction is right and the
+magnitude is not: 9.8 against 20. The objective is not met and the number is
+reported as measured. On all nine fields including rice it is 6.6 percent less.
+
+On the other metrics against the same baseline, P3 reaches **84.8 percent fewer
+stress days** and **36.1 percent less deep percolation** (63.9 percent fewer
+stress days across all nine). The second half of the criterion — no increase in
+stress days — is met with a large margin.
+
+Fixed-interval practice both over-waters and under-delivers: P0 has the highest
+percolation of any policy *and* the most stress days, because a fixed depth on a
+fixed interval is the wrong amount at the wrong time in both directions.
 
 ### The novelty claim: P3 versus P1
 
-This is the comparison the contribution rests on, and both policies operate
-under exactly the same power constraint.
+This is the comparison the contribution rests on, and both policies operate under
+exactly the same power constraint.
 
 | Metric | P3 | P1 | Change |
 |---|---:|---:|---:|
-| Water applied | 8,852 mm | 6,141 mm | **+44.2%** |
-| Stress days | 320 | 846 | **−62.2%** |
-| Deep percolation | 7,593 mm | 5,547 mm | +36.9% |
-| Pump hours | 4,463 | 2,959 | +50.9% |
+| Water applied | 5,740 mm | 4,435 mm | **+29.4%** |
+| Stress days | 96 | 576 | **−83.3%** |
+| Deep percolation | 4,859 mm | 4,212 mm | +15.4% |
+| Pump hours | 2,854 | 2,141 | +33.3% |
 
-**Headline: 62 percent fewer crop stress days than a conventional advisory under
-the same power constraint, at 44 percent higher water use.**
+All nine fields including rice: +18.3 percent water, −57.3 percent stress days.
+
+**Headline: 83 percent fewer crop stress days than a conventional advisory under
+the same power constraint, at 29 percent higher water use.**
 
 The scheduler buys reliability with water, and the mechanism is visible in the
 policy itself. Because it cannot rely on the next window arriving, it refills
@@ -260,26 +342,37 @@ early, and the capacity-limit branch fires while the deficit can still be repaid
 in one window. That keeps the root zone fuller, which is why stress nearly
 disappears, and also why more of the rain that follows drains below it.
 
-This is a real trade, not a defect, and it is reported as one. Whether it is the
-right trade depends on what water costs relative to yield in a given district,
-which is a question the simulation can now quantify per field rather than one
-that has to be argued.
+This is a real trade, not a defect. The evidence that it is a trade rather than
+over-application is that P3 now sits **below** the unachievable Pref on stress
+days (96 against 116) while applying only 13.7 percent more water, and that 62
+percent of that excess — not 99 percent — reaches the root zone rather than
+draining past it. Before the carry-over fix neither of those was true, and the
+same words would have been a cover story for a defect.
+
+Whether it is the right trade depends on what water costs relative to yield in a
+given district, which is a question the simulation can now quantify per field
+rather than one that has to be argued.
 
 ### The price of rationed electricity
 
 P3 against Pref isolates the cost of the constraint itself, since the two differ
 only in whether power is available on demand:
 
-**28 percent more water and 43 more stress days than the same scheduler with
-unlimited power.** That is the measured price a smallholder pays for a rationed
-feeder, and it is a number this project can produce because it models the
-constraint explicitly. No advisory in the related-work map (plan Section 3)
-reports it, because none of them models the window at all.
+**13.7 percent more water than the same scheduler with power on demand.** That is
+the measured price a smallholder pays for a rationed feeder, and it is a number
+this project can produce because it models the constraint explicitly. No advisory
+in the related-work map (plan Section 3) reports it, because none of them models
+the window at all.
+
+P3 reaches *fewer* stress days than Pref (96 against 116) rather than more, which
+is not a paradox: Pref waits for depletion to reach RAW before irrigating, while
+P3's capacity-limit branch refills before the deficit outgrows one window. Pref
+bounds what unlimited power buys, not what perfect agronomy would.
 
 ### Rain calibration
 
-Fitted on the earlier season and scored on the later one; never on the same
-data, which would report memorisation rather than skill.
+Fitted on the earlier season and scored on the later one; never on the same data,
+which would report memorisation rather than skill.
 
 | Model | Brier score |
 |---|---:|
@@ -289,12 +382,43 @@ data, which would report memorisation rather than skill.
 The calibration is **better than the raw forecast**, by 27 percent on Brier
 score, over 4,344 held-out pairs.
 
-Its effect on the outcome is nevertheless small: P3 saves only 109 mm of water
-over P2, about 1.2 percent. At the 0.7 confidence threshold the rule requires,
-the calibrated probability rarely clears the bar, so the skip fires seldom. That
-is the conservative direction by design — a wrongly skipped irrigation costs the
-crop, while a needless one costs only water — but it means the rain skip is not
-where this system's value lies. **The power-window scheduling is.**
+#### How much the threshold matters: almost nothing
+
+A single threshold is a single point, so all four were run. Six non-ponded
+fields, two seasons, everything else unchanged:
+
+| Confidence threshold | Water (mm) | Stress days | Skips issued | Deep percolation (mm) |
+|---:|---:|---:|---:|---:|
+| 0.5 | 5,745 | 98 | 316 | 4,864 |
+| 0.6 | 5,745 | 98 | 261 | 4,864 |
+| **0.7 (deployed)** | **5,740** | **96** | **242** | **4,859** |
+| 0.8 | 5,827 | 96 | 113 | 4,946 |
+
+Nearly tripling the number of skips issued, from 113 to 316, changes water use by
+**87 mm out of 5,750, under 2 percent**, and stress days by two. Compare that
+with the 1,305 mm the power-window scheduling itself accounts for against P1.
+**The skip rule is not where this system's value lies. The power-window
+scheduling is**, and the sensitivity table is the evidence rather than the
+assertion.
+
+Two things in that table are worth stating plainly rather than leaving for a
+reviewer to notice:
+
+- **0.5 and 0.6 give identical water, stress and percolation** despite 55 more
+  skips. Those extra skips fall on days the scheduler would not have irrigated
+  anyway. The rain check runs before the need check in `plan_day`, so a skip is
+  issued whenever rain covers a deficit, including deficits too small to act on.
+  **The skip count therefore overstates avoided irrigations**, and only the water
+  column measures what the rule actually saved.
+- **0.8 uses more water than 0.7**, which is the rule working as intended: a
+  higher bar refuses more skips, so more irrigations go ahead.
+
+The deployed value stays at 0.7, in `params/scheduling.yaml` under
+`rain_skip.min_confidence`. It is not chosen because it wins — nothing in this
+table wins — but because the asymmetry is real: a wrongly skipped irrigation
+costs the crop a whole interval, since the next window may be days away, while a
+needless one costs only water. A pilot with a measured cost of water in a
+particular district should pick its own point from this curve.
 
 `precipitation_probability` is null for every historical date in the Previous
 Runs API, which is why the confidence had to be measured from
