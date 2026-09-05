@@ -26,7 +26,7 @@ PIP    := $(BIN)/pip
 HANDOFF_FRONTEND := handoff/student1_frontend
 HANDOFF_AI       := handoff/student3_ai_model
 
-.PHONY: help setup test lint format demo demo-offline script-samples sim validate validate-hourly validate-inputs sensitivity func-start bicep-build deploy-plan deploy sync-handoff clean
+.PHONY: help setup test lint format demo demo-offline script-samples script-html sim validate validate-hourly validate-inputs sensitivity func-start bicep-build deploy-plan deploy sync-handoff clean
 
 help:  ## Show the available targets
 	@grep -hE '^[a-zA-Z_-]+:.*?## ' $(MAKEFILE_LIST) \
@@ -90,6 +90,11 @@ demo-offline:  ## Same as demo but with no network, for a room with bad wifi
 
 script-samples:  ## Write every rendered script to results/ for native-speaker review
 	$(PYTHON) -m irrigation_engine.devtools.script_samples
+
+script-html:  ## Render those scripts as a phone-readable page for a native speaker
+	@# A terminal cannot be trusted with Devanagari or Tamil. This is the file to
+	@# actually hand to a reviewer.
+	$(PYTHON) -m irrigation_engine.devtools.script_page
 
 sim:  ## Run the five-policy simulation study into results/
 	@# Prefers the teammate's committed copy under src/ai_model, falling back
