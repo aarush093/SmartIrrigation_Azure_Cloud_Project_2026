@@ -311,6 +311,15 @@ implemented and tested against the documented API. Production deployment would
 use an Indian communications provider registered under TRAI's DLT framework as a
 new adapter implementation and a configuration change.
 
+**The energy cost falls on the distribution utility, not the farmer, and is
+not accounted for.** P3 draws approximately 39 per cent more electricity than
+P1 (15,136 kWh against 10,895 kWh over twelve field-seasons), because it runs
+the pump for more hours. On unmetered agricultural feeders the farmer pays
+nothing at the margin for that electricity, so the scheduler improves the
+farmer's outcome partly by transferring cost to the DISCOM; quantifying that
+transfer, and whether it is offset by the reduction in wasteful percolation, is
+future work this project does not attempt.
+
 **Two of six Phase-I objectives are not met at their stated thresholds.**
 Objective 2 measures 0.279 mm/day against a 0.2 mm/day criterion; Objective 6
 applies 9.8 per cent less water than fixed-interval irrigation rather than 20

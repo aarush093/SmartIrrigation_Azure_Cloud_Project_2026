@@ -349,6 +349,14 @@ percent of that excess — not 99 percent — reaches the root zone rather than
 draining past it. Before the carry-over fix neither of those was true, and the
 same words would have been a cover story for a defect.
 
+The 38 percent that still drains has a mechanism worth naming: refilling early
+leaves the root zone fuller, so monsoon rain arriving afterwards finds less
+storage to occupy and passes below it. **The water cost of window scheduling is
+paid mostly as wet-season deep percolation**, not as extra transpiration, which
+is what the 62 to 68 percent share tracked by the sanity check is measuring. In a
+district where the aquifer is recharged by that percolation the cost is smaller
+than the water figure suggests; where it is not, it is exactly as large.
+
 Whether it is the right trade depends on what water costs relative to yield in a
 given district, which is a question the simulation can now quantify per field
 rather than one that has to be argued.
