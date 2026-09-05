@@ -1,0 +1,168 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "irrigation-engine"
+version = "0.1.0"
+description = "FAO-56 water balance and power-window irrigation scheduler for the Cloud-Based Smart Irrigation Recommendation project (BITE412L)."
+readme = "README.md"
+requires-python = ">=3.11,<3.13"
+license = { text = "MIT" }
+authors = [{ name = "Aarush Pandit", email = "153858722+aarush093@users.noreply.github.com" }]
+
+# The engine is deliberately dependency-light and contains no Azure imports, so
+# that the agronomy stays reviewable and testable offline. See CLAUDE.md section 4.
+#   numpy    numerical work in the water balance and Penman-Monteith
+#   pydantic data model, JSON serialisation for Cosmos DB
+#   httpx    the only HTTP client, used by the provider adapters
+#   pyyaml   reads params/*.yaml and scripts/*.yaml; required because the brief
+#            mandates that every agronomic constant and farmer-facing string
+#            lives in YAML rather than in code
+#   tzdata   the IANA time zone database, Windows only. The team develops on
+#            Windows, which ships no system tz database, so zoneinfo cannot
+#            resolve Asia/Kolkata without it. The scheduler models power windows
+#            as IST-aware datetimes (a 22:00 to 06:00 night feeder crosses
+#            midnight), so this is load-bearing, not convenience. Linux and macOS
+#            use the system database and do not install it.
+dependencies = [
+    "numpy>=1.26",
+    "pydantic>=2.6",
+    "httpx>=0.27",
+    "pyyaml>=6.0",
+    "tzdata>=2024.1; sys_platform == 'win32'",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=8.0",
+    "pytest-cov>=5.0",
+    "hypothesis>=6.100",
+    "respx>=0.21",
+    "ruff>=0.5",
+    "mypy>=1.10",
+    "types-PyYAML>=6.0",
+    # Present so the Functions app and the FastAPI routes are actually
+    # type-checked and importable in CI, rather than being the one part of the
+    # codebase nothing verifies. They ship to Azure via
+    # src/azure/functions/requirements.txt, not from here.
+    "azure-functions>=1.21",
+    "fastapi>=0.115",
+]
+
+[tool.setuptools.packages.find]
+where = ["src/backend"]
+include = ["irrigation_engine*"]
+
+[tool.setuptools.package-data]
+irrigation_engine = ["py.typed", "params/*.yaml", "scripts/*.yaml"]
+
+# ---------------------------------------------------------------------------
+# ruff
+# ---------------------------------------------------------------------------
+[tool.ruff]
+line-length = 100
+target-version = "py311"
+src = ["src/backend", "src/azure", "tests"]
+
+[tool.ruff.lint]
+select = [
+    "E",    # pycodestyle errors
+    "W",    # pycodestyle warnings
+    "F",    # pyflakes
+    "I",    # import sorting
+    "N",    # pep8-naming
+    "UP",   # pyupgrade
+    "B",    # flake8-bugbear
+    "A",    # shadowing builtins
+    "C4",   # comprehensions
+    "SIM",  # simplify
+    "PTH",  # use pathlib
+    "RUF",  # ruff-specific
+    "D",    # pydocstyle: public functions carry docstrings
+    "ANN",  # annotations required
+    "TID",  # tidy imports
+]
+ignore = [
+    "D203",  # conflicts with D211
+    "D213",  # conflicts with D212
+    "ANN401", # explicit Any is allowed where commented; see CLAUDE.md
+]
+
+[tool.ruff.lint.pydocstyle]
+convention = "google"
+
+[tool.ruff.lint.per-file-ignores]
+# Tests do not need module/class docstrings, and assert-heavy code is the point.
+"tests/**" = ["D100", "D101", "D102", "D103", "D104", "ANN201", "ANN001"]
+# __init__ files re-export; the imports are intentional.
+"**/__init__.py" = ["F401"]
+
+[tool.ruff.lint.flake8-tidy-imports]
+# The engine must never import Azure. Enforced in CI as well as by review.
+banned-module-level-imports = []
+
+# ---------------------------------------------------------------------------
+# mypy
+# ---------------------------------------------------------------------------
+[tool.mypy]
+# python_version is deliberately not pinned. numpy 2.5 ships stubs that use the
+# 3.12 "type" statement, which mypy rejects when asked to target 3.11, so pinning
+# here fails on a dependency rather than on our code. mypy therefore follows the
+# interpreter it runs under, and 3.11 runtime compatibility is proved by the
+# pytest matrix in CI instead. ruff still targets py311 for style and upgrades.
+strict = true
+warn_unreachable = true
+warn_no_return = true
+show_error_codes = true
+pretty = true
+mypy_path = "src/backend:src/azure"
+files = ["src/backend", "src/azure", "tests"]
+exclude = "(^|/)(handoff|\\.venv)/"
+
+[[tool.mypy.overrides]]
+# These ship no type information.
+module = ["azure.*", "respx.*"]
+ignore_missing_imports = true
+
+[[tool.mypy.overrides]]
+# The Azure Functions and FastAPI decorators are untyped upstream, so every
+# trigger and route is reported as "untyped decorator makes function untyped".
+# That is a property of the SDKs, not of this code, and suppressing it here is
+# narrower than relaxing strict mode. The function bodies are still fully
+# checked; only the decorator wrapping is exempt.
+module = ["function_app", "api"]
+disable_error_code = ["untyped-decorator", "misc"]
+
+# ---------------------------------------------------------------------------
+# pytest
+# ---------------------------------------------------------------------------
+[tool.pytest.ini_options]
+minversion = "8.0"
+testpaths = ["tests"]
+pythonpath = ["src/backend", "src/azure"]
+addopts = [
+    "-ra",
+    "--strict-markers",
+    "--strict-config",
+    # Integration tests reach the public APIs and are opt-in. Run them with
+    #   pytest -m integration
+    "-m", "not integration",
+]
+markers = [
+    "integration: hits a live external API (Open-Meteo, SoilGrids, NASA POWER). Skipped by default.",
+    "azure: requires Azure credentials or a deployed resource. Skipped by default.",
+]
+filterwarnings = ["error"]
+
+[tool.coverage.run]
+source = ["src/backend/irrigation_engine"]
+branch = true
+
+[tool.coverage.report]
+exclude_lines = [
+    "pragma: no cover",
+    "raise NotImplementedError",
+    "if TYPE_CHECKING:",
+    "\\.\\.\\.",
+]

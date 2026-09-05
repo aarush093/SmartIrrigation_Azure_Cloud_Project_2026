@@ -1,0 +1,80 @@
+# Power-window scheduler constants.
+#
+# Policy defined in docs/PHASE2_NOVELTY_AND_PLAN.md Section 7, as corrected on
+# 3 September 2026.
+
+# --- Feeder reliability -------------------------------------------------------
+# An exponentially weighted estimate of the probability that a scheduled window
+# actually carries power, learned from the farmer's "bijli nahi aayi" missed
+# calls:
+#
+#     r_new = alpha * outcome + (1 - alpha) * r_old
+#
+# where outcome is 0 if a POWER_FAILED event arrived for that window and 1
+# otherwise. There is no other sensor: the missed call IS the measurement.
+reliability:
+  # Weight on the newest observation. At 0.3 a single failure moves a feeder
+  # from 0.80 to 0.56, which crosses the low-reliability threshold immediately.
+  # That is deliberate: it is better to tell a farmer "when power comes" one day
+  # too early than to give him a clock time the feeder will not honour.
+  alpha: 0.3
+  # Starting value for a feeder with no history. Not 1.0: an unproven feeder
+  # should not be trusted as though it had a perfect record.
+  initial: 0.8
+  # Below this the schedule carries no clock time. The call says "when power
+  # comes, run X minutes" instead, and the window duration used to compute
+  # capacity C is scaled by r.
+  low_threshold: 0.6
+
+# --- Scheduling horizon -------------------------------------------------------
+horizon:
+  # Days of forecast the projection to the next window may consume.
+  forecast_days: 7
+  # How long before a window opens the daily call is placed. Plan Section 5.2.
+  call_lead_minutes: 60
+
+# --- Rain skip ----------------------------------------------------------------
+# An irrigation is skipped only when the calibrated forecast both expects enough
+# rain to cover the deficit AND is trusted at this probability. The asymmetry is
+# deliberate: a wrongly skipped irrigation costs the crop a whole interval,
+# because the next window may be days away, while a needless one costs only
+# water.
+rain_skip:
+  # Measured on the two-season simulation, 5 September 2026: at 0.7 the rule
+  # fires seldom, so the skip saves little water. Lowering it saves more and
+  # risks more. The sensitivity across 0.5 to 0.8 is in results/README.md; the
+  # pilot should pick a point from that curve, not from this comment.
+  min_confidence: 0.7
+
+# --- Multi-field allocation ---------------------------------------------------
+# Fields sharing one pump compete for the same window. Priority is
+# (D / RAW) * Ky: how far into stress the field is, weighted by how much yield
+# that crop loses per unit of deficit.
+allocation:
+  # Ties are broken on field id so that identical inputs always give an
+  # identical order. Determinism is what makes the property tests and the
+  # two-season simulation reproducible.
+  tie_break: field_id
+
+# --- Part of day, for spoken clock times -------------------------------------
+# A farmer who cannot read does not know whether "6:00" is morning or evening,
+# so every spoken time carries a part of day. Boundaries are stated here rather
+# than inline so the convention is inspectable and changeable per district.
+#
+# Convention chosen: aligned to the working day of an Indian cultivator rather
+# than to astronomical dawn. Morning starts at 04:00 because a night feeder
+# closing at 06:00 must still be described as morning; night starts at 20:00
+# because a 22:00 window is unambiguously "raat".
+#
+# TODO [VERIFY] with the pilot farmers: whether "shaam" or "raat" is the natural
+# word for 19:00 varies by region and season.
+part_of_day:
+  morning_start: 4     # 04:00 to 11:59  subah / kaalai
+  afternoon_start: 12  # 12:00 to 15:59  dopahar / madhiyam
+  evening_start: 16    # 16:00 to 19:59  shaam / maalai
+  night_start: 20      # 20:00 to 03:59  raat / iravu
+
+# Spoken durations are rounded down to this many minutes, exactly as stop times
+# are. It keeps the spoken vocabulary to multiples of five, and rounding down
+# never asks the farmer to run the pump longer than computed.
+spoken_duration_rounding_minutes: 5

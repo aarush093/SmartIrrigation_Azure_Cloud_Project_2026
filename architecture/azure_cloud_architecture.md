@@ -220,3 +220,103 @@ project report.
 ---
 
 *Phase-I: planning and documentation.*
+
+---
+
+# Phase-II overlay: as built
+
+Added 5 September 2026 by Aarush Pandit (23BIT0416). **The Phase-I diagram above
+is unchanged.** This overlay shows what `src/azure/infra/main.bicep` actually
+declares, which is the same architecture with the services that were deferred
+removed and the channel services added.
+
+```mermaid
+flowchart LR
+  subgraph Sources["Free public sources"]
+    OM["Open-Meteo<br/>forecast + archive + previous runs"]
+    SG["ISRIC SoilGrids<br/>(prefill only)"]
+    NP["NASA POWER<br/>(cross-check)"]
+    PDF["DISCOM feeder<br/>schedule circulars"]
+    FARM["Farmer's own answer:<br/>soil texture, pump, window"]
+  end
+
+  subgraph Ingest["Ingestion"]
+    DI["AI Document Intelligence F0<br/>prebuilt-layout"]
+    F1["Functions: ingest<br/>+ water balance"]
+  end
+
+  subgraph Decide["Decision, deterministic"]
+    F2["Functions: power-window<br/>scheduler (Section 7)"]
+    ML["ML workspace<br/>(registration only, no compute)"]
+  end
+
+  subgraph Store["Storage"]
+    COS[("Cosmos DB serverless<br/>farmers · fields · feeder_windows<br/>schedules · events")]
+    BLOB[("Blob Storage<br/>raw · discom-pdfs<br/>tts-cache · deadletter")]
+  end
+
+  subgraph Channel["Delivery"]
+    SP["AI Speech F0<br/>neural TTS, cached by hash"]
+    TEL{"TelephonyAdapter"}
+    SIM["SimulatedTelephony<br/>THE DEMO PATH"]
+    ACS["ACS Call Automation<br/>no phone number"]
+    SWA["Static Web Apps<br/>icon-only PWA"]
+  end
+
+  subgraph Ops["Security and operations"]
+    KV["Key Vault<br/>RBAC"]
+    APIM["API Management<br/>consumption"]
+    AAD["Entra ID<br/>operator only"]
+    AI["App Insights<br/>+ 5 alert rules"]
+  end
+
+  FARMER((Farmer's<br/>phone))
+  OP((Operator /<br/>extension worker))
+
+  OM --> F1
+  SG -.prefill.-> F1
+  NP -.validation.-> ML
+  PDF --> DI --> COS
+  FARM ==primary==> F1
+
+  F1 --> COS
+  F1 --> BLOB
+  COS --> F2 --> COS
+  ML -.calibrated rain.-> F2
+
+  F2 --> SP --> BLOB
+  SP --> TEL
+  TEL --> SIM --> FARMER
+  TEL -.feature flag off.-> ACS
+  ACS -.blocked: no Indian numbers.-> FARMER
+
+  FARMER -."missed call A / B / C".-> ACS
+  ACS -."IncomingCall via Event Grid<br/>12h TTL, dead-lettered".-> F1
+  SIM ==browser console==> F1
+
+  COS --> APIM --> SWA --> OP
+  AAD --> APIM
+  KV -.secrets.-> F1
+  KV -.secrets.-> F2
+  AI -.telemetry.-> F1
+  AI -.telemetry.-> F2
+
+  classDef blocked stroke-dasharray: 5 5,color:#888
+  classDef primary stroke-width:3px
+  class ACS blocked
+  class SIM,FARM primary
+```
+
+## What changed from Phase-I, and why
+
+| Change | Reason |
+|---|---|
+| **The farmer's own soil answer is primary**, SoilGrids only prefills | SoilGrids returned every property null for all three pilot points. A farmer's answer also describes *his plot* rather than a 250 m pixel that may straddle a road |
+| **`SimulatedTelephony` is the demonstration path**, permanently | No Indian phone number can be provisioned on this subscription. The adapter interface existed for exactly this risk |
+| **Nine services deferred** to Phase-III | Each with a named substitute; `docs/AZURE_SERVICES_PHASE2.md` |
+| **No Virtual Network** | Objective 5 met through authenticated gateways instead |
+| **ML workspace has no compute** | Registration and versioning only; training runs locally |
+
+Every solid arrow is implemented and tested. The two dashed arrows through ACS
+are implemented, tested against the documented API, and cannot be executed on
+this subscription.

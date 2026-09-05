@@ -1,0 +1,9 @@
+# P3 rain-skip confidence threshold sensitivity
+"# six non-ponded fields, two seasons; all other parameters unchanged"
+# the deployed value is scheduling.yaml rain_skip.min_confidence
+
+min_confidence,water_mm,stress_days,rain_skips,deep_percolation_mm,pump_hours,irrigations
+0.50,5745.0,98,316,4864.4,2857.6,412
+0.60,5745.0,98,261,4864.4,2857.6,412
+0.70,5740.0,96,242,4859.4,2854.5,412
+0.80,5826.8,96,113,4946.2,2892.7,420

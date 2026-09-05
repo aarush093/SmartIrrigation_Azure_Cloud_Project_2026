@@ -1,0 +1,13 @@
+# Azure Functions host requirements.
+#
+# The engine is built as a wheel from src/backend and installed at publish time;
+# it is not a path dependency here because the Functions build service cannot
+# resolve one.
+azure-functions
+fastapi
+# Needed only when the corresponding feature flag is on. Listed so a deployed
+# environment can enable a flag without redeploying requirements.
+azure-communication-callautomation
+azure-cognitiveservices-speech
+azure-cosmos
+azure-identity

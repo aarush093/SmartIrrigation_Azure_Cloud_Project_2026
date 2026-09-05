@@ -1,0 +1,124 @@
+# Hindi script master.
+#
+# TODO [VERIFY native speaker] Every line below must be checked by a native
+# Hindi speaker before the pilot, for register as much as for grammar: the
+# farmer is addressed with the familiar imperative a village extension worker
+# would use, not the formal register of a bank recording.
+#
+# Rules enforced by tests/test_scripts.py: no millimetres, no
+# evapotranspiration, no depletion, no percentages, no decimal numbers. Clock
+# times and minutes only. See plan Section 5.5.
+
+language: hi
+name: हिन्दी
+# TODO [VERIFY] confirm the Azure AI Speech voice name at build time.
+voice: hi-IN-SwaraNeural
+
+# Address term appended to the farmer's name. "Kaka" is the respectful
+# term for an older man in Marathi and in Hindi as spoken across the
+# Marathwada and northern belt, and is what a village extension worker
+# would actually say.
+# TODO [VERIFY native speaker] whether "kaka", "bhai" or "ji" fits the
+# pilot districts best; it varies by region and by the speaker's age
+# relative to the farmer.
+honorific: " काका"
+greeting: "{name}{honorific}, नमस्ते।"
+greeting_no_name: "नमस्ते।"
+
+acknowledge:
+  water_given: "कल आपने बताया था कि पानी दे दिया।"
+  power_failed: "कल आपने बताया था कि बिजली नहीं आई।"
+
+# The spoken times already carry their part of day (raat, subah), so these
+# sentences must NOT repeat it. Only the day is framed here.
+power:
+  today: "बिजली {start} से {end} तक है।"
+  tomorrow: "कल बिजली {start} से {end} तक है।"
+  unreliable: "आज बिजली का पक्का नहीं है।"
+
+crop_needs_water: "{crop} को पानी चाहिए।"
+
+instruction:
+  with_time: "{start} पंप चालू करो, और {stop} बंद कर दो।"
+  when_power_comes: "जब बिजली आए तो पंप चालू करो, {duration} चलाओ, फिर बंद कर दो।"
+
+duration:
+  hours_and_minutes: "{hours} घंटे {minutes} मिनट"
+  hours_only: "{hours} घंटे"
+  one_hour: "एक घंटा"
+  minutes_only: "{minutes} मिनट"
+
+reason:
+  stress_imminent: "खेत सूखा है।"
+  capacity_limit: "बिजली का समय कम है, इसलिए देर मत करो।"
+  opportunistic_topup: "बिजली है, इसलिए पानी दे दो।"
+  rain_expected: "बारिश आने वाली है।"
+  carry_over: "बिजली का समय कम है, बाकी अगली बार पूरा करेंगे।"
+
+skip:
+  opening: "आज पंप मत चलाओ।"
+  rain: "बारिश आने वाली है।"
+  followup: "अगर बारिश नहीं आई तो हम फिर फोन करेंगे।"
+
+question:
+  did_you_water: "कल पानी दिया? हाँ के लिए एक दबाओ, नहीं के लिए दो दबाओ।"
+
+repeat: "दोबारा सुनने के लिए एक दबाओ।"
+
+# --- Spoken clock times -------------------------------------------------------
+# TODO [VERIFY native speaker] Every word below, for register as much as for
+# grammar.
+#
+# A farmer-facing script contains NO DIGITS. Every time is spoken in words with
+# its part of day, because a non-reader cannot tell whether "6:00" is subah or
+# shaam, and a text-to-speech voice handed a numeral renders it unpredictably.
+#
+# Hindi has irregular half-hour forms for one and two o'clock: 1:30 is "dedh"
+# and 2:30 is "dhai", not "saade ek" or "saade do". Those are listed separately
+# in half_special and take precedence.
+time:
+  numbers:
+    1: "एक"
+    2: "दो"
+    3: "तीन"
+    4: "चार"
+    5: "पाँच"
+    6: "छह"
+    7: "सात"
+    8: "आठ"
+    9: "नौ"
+    10: "दस"
+    11: "ग्यारह"
+    12: "बारह"
+  # Every multiple of five: a spoken DURATION may need 15, 30 or 45 even
+  # though a clock time at those minutes uses the quarter and half forms.
+  minutes:
+    5: "पाँच"
+    10: "दस"
+    15: "पंद्रह"
+    20: "बीस"
+    25: "पच्चीस"
+    30: "तीस"
+    35: "पैंतीस"
+    45: "पैंतालीस"
+    40: "चालीस"
+    50: "पचास"
+    55: "पचपन"
+  part_of_day:
+    morning: "सुबह"
+    afternoon: "दोपहर"
+    evening: "शाम"
+    night: "रात"
+  # 1:30 and 2:30 are irregular in Hindi and do not take "saade".
+  half_special:
+    1: "डेढ़"
+    2: "ढाई"
+  # Hindi says sawa, saade and paune rather than counting minutes.
+  uses_quarter_forms: true
+  forms:
+    oclock: "{part} {hour} बजे"
+    quarter_past: "{part} सवा {hour} बजे"
+    half_past: "{part} साढ़े {hour} बजे"
+    half_special: "{part} {word} बजे"
+    quarter_to: "{part} पौने {next_hour} बजे"
+    minutes_past: "{part} {hour} बज कर {minutes} मिनट"
