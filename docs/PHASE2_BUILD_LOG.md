@@ -1063,3 +1063,120 @@ than blocked on his upload.
   merely formal. A native speaker should decide whether to contract it.
 - `params/soil_texture_classes.yaml` centroids and the class-typical bulk
   densities both need checking against printed sources.
+
+---
+
+## 2026-09-05 — Phase-II closing entry
+
+1,270 tests. `ruff`, `ruff format` and `mypy --strict` clean across 55 source
+files. Five CI jobs green. Bicep compiles to 25 resource declarations. Nothing
+deployed, no Azure credit spent.
+
+### What Phase-II delivered
+
+| Milestone | Outcome |
+|---|---|
+| M0 | Standards, build config, engine API fixed as typed contracts before behaviour existed, five-job CI |
+| M1 | FAO-56 engine, verified against Example 18 on every printed intermediate |
+| M2 | Power-window scheduler with hypothesis property tests, DISCOM parser |
+| M3 | Three script masters, spoken clock times, missed-call state machine, Functions app |
+| M4 | Both teammate handoff packages, prepared and gitignored |
+| M5 | Bicep for 25 resources on free tiers, Cosmos-backed persistence, five alert rules |
+| M6 | Objective 6 simulation, architecture overlays, README, viva notes, report draft |
+
+### The three headline numbers
+
+1. **Objective 2 is not met**, at 0.279 mm/day against 0.2. The implementation is
+   verified correct, and the residual is smaller than the 0.735 mm/day
+   disagreement between two reanalysis products fed to that same implementation.
+2. **Objective 6 is not met** on water: P3 applies 13.8 percent more than
+   fixed-interval, not 20 percent less. It reaches 68.0 percent fewer stress days
+   on the same comparison.
+3. **The novelty claim holds on its own terms**: against a conventional advisory
+   under an identical power constraint, 62.2 percent fewer stress days at 44.2
+   percent higher water use. The scheduler buys reliability with water.
+
+### Every deviation from the brief, across all milestones
+
+Recorded in one place so none has to be rediscovered at review.
+
+| # | Deviation | Reason | Approved |
+|---|---|---|---|
+| 1 | `pyyaml` as a fourth engine dependency | The brief's own mandate that constants and scripts live in YAML requires a YAML parser | Yes |
+| 2 | mypy `python_version` unpinned | numpy 2.5 stubs use 3.12 syntax; pinning fails on a dependency, not our code. 3.11 support proved by the CI matrix instead | Yes |
+| 3 | `.gitattributes` added | Team on Windows, CI on Linux; without it the first cross-platform edit is a whole-file diff | Yes |
+| 4 | `required_pump_minutes` split from `pump_minutes` | The 720-minute ceiling would have made the plan's own 45 mm case uncomputable, and the scheduler needs the true requirement to carry a remainder forward | Yes |
+| 5 | `minutes_for_discharge` added | The scheduler holds a discharge as a number; faking a `BucketTest` would read as though one had been performed | Yes |
+| 6 | `Field` renamed `IrrigatedField` | `Field` is pydantic's own, and shadowing it in a module using `Field(...)` throughout is a trap | Yes |
+| 7 | `src/azure` on the import path rather than a package | mypy could not resolve it both ways | Yes |
+| 8 | `tzdata` added, Windows only | `zoneinfo` cannot resolve `Asia/Kolkata` on Windows, and IST-aware windows are load-bearing | Yes |
+| 9 | `azure-functions` and `fastapi` as dev dependencies | Without them the Functions app was the one part of the codebase nothing type-checked | Yes |
+| 10 | Objective 6 policy set expanded from four to five | An unconstrained trigger is not a baseline anyone can execute; P1 is what a farmer using an existing advisory actually experiences | Yes |
+| 11 | Empirical rain calibration written here | `precipitation_probability` is null for every historical date, so the confidence had to be measured rather than read. The trained model remains Krishna's deliverable | Within scope |
+
+### Every defect found during Phase-II, and how
+
+None of these was found by inspection. Recording the mechanism matters more than
+recording the fix.
+
+| Defect | Found by | Consequence had it shipped |
+|---|---|---|
+| Saxton-Rawls density adjustment was a no-op, ratio identically 1.0 | Hand-tracing three bulk densities | An adjustment that appears in code and review while doing nothing |
+| Validation harness used `wind_speed_10m_max` where FAO-56 takes the mean | Running the Objective 2 validation | MAE 0.972 instead of 0.279; the engine would have looked wrong |
+| Deduplication keyed on the calendar date | A test replaying an event 90 minutes later | A farmer ringing at 00:30 about a 22:00–06:00 window credits the balance twice, silently under-irrigating for the rest of the interval |
+| Demo planned from midnight | Reading the demo output | A call announcing "tomorrow morning" about a window that closed hours earlier |
+| Sentence frame repeated the part of day | Generating the script sample file | English "tonight … ten o'clock at night"; Tamil a visibly doubled word |
+| Three reason lines said "water today" | A guard test written after spotting it | The script tells him to water today, then instructs him for tomorrow morning, two sentences apart |
+| Honorific hardcoded as Marathi "kaka" | Review | Every farmer addressed as a Marathi speaker regardless of district |
+| Cotton Kc_ini "corrected" from a correct 0.35 to a wrong 0.30 | Re-reading Table 12's group-header structure | A wrong agronomic constant introduced *by* a correction |
+| Phantom carry-over in the simulation | Investigating why P2 used 64 percent more water than P1 | Double-counted deficit driving steady over-irrigation, inflating the headline |
+| P0 applying a need-based depth | Reading the policy specification against the code | A flattered baseline making every other policy look worse |
+| `hash()` used for the farmer id | mypy and review | A different farmer id after every process restart |
+
+### Open `TODO [VERIFY]` items
+
+Grouped by who can close them.
+
+**Needs a printed source**
+
+- Indian crop stage lengths for the seven crops without an FAO-56 Table 11 Indian
+  row: rice, cotton, sugarcane, groundnut, tomato, onion, chickpea. ICAR or state
+  package-of-practice.
+- All nine Ky values, from FAO-33 and FAO-66. Ky is not in FAO-56.
+- Groundnut Kc_ini, unresolved from the page.
+- Saxton and Rawls equations 3 to 5, for the density adjustment.
+- USDA texture-triangle class centroids and class-typical bulk densities in
+  `params/soil_texture_classes.yaml`.
+- Local area-unit conversions: bigha, guntha, cent vary by district.
+- IEEE citation metadata for R1, R2, R6, R9, R10, R11, R13, R14, R15, R17.
+
+**Needs a native speaker**
+
+- Every line of the Hindi and Tamil masters, for register as much as grammar.
+- The honorific in each: whether "kaka", "bhai" or "ji" suits the Hindi pilot
+  districts, and "anna", "aiya" or "saar" the Tamil one.
+- Whether the Tamil time construction should use colloquial contractions rather
+  than the regular form used here.
+- `results/script_samples.txt` exists for exactly this review.
+
+**Needs a deployment or a pilot**
+
+- Actual monthly Azure cost against the portal.
+- Azure AI Speech neural voice names, confirmed at build time.
+- Whether a rejected inbound call accrues any charge, on whichever provider a
+  pilot uses.
+- TRAI TCCCPR 2018 position on consented transactional automated calls.
+- MSEDCL circular reuse terms.
+- Observed share of inbound calls receiving an instant reject versus ringing out.
+- Whether the three pilot coordinates genuinely lack SoilGrids coverage or the
+  service was degraded that day.
+- The Vellore monsoon ET₀ bias of +0.413, still unexplained.
+
+### What is not done
+
+- Objective 3, the soil-moisture model. Krishna Agrawal's module, off the
+  critical path by design.
+- The trained rain calibration model. The empirical table stands in.
+- Both teammates' code is prepared but must be committed by them.
+- No Azure resource is deployed; no runtime, cost or latency figure exists.
+- No live phone call has ever been placed, and none can be on this subscription.
