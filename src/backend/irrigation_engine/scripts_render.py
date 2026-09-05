@@ -362,7 +362,15 @@ def speak_schedule(
     parts: list[str] = []
 
     if farmer_name:
-        parts.append(str(script["greeting"]).format(name=farmer_name))
+        # The honorific is per language, not hardcoded. "Kaka" is right for a
+        # Marathi speaker in Beed and simply wrong for a Tamil speaker in
+        # Vellore, and getting it wrong is the kind of error that makes a
+        # farmer stop listening.
+        parts.append(
+            str(script["greeting"]).format(
+                name=farmer_name, honorific=str(script.get("honorific", ""))
+            )
+        )
     else:
         parts.append(str(script["greeting_no_name"]))
 
@@ -453,7 +461,11 @@ def render_next_day_question(lang: str = "hi", farmer_name: str | None = None) -
     script = _script(lang)
     parts: list[str] = []
     if farmer_name:
-        parts.append(str(script["greeting"]).format(name=farmer_name))
+        parts.append(
+            str(script["greeting"]).format(
+                name=farmer_name, honorific=str(script.get("honorific", ""))
+            )
+        )
     else:
         parts.append(str(script["greeting_no_name"]))
     parts.append(str(script["question"]["did_you_water"]))

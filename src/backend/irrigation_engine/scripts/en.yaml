@@ -19,7 +19,10 @@ name: English
 # TODO [VERIFY] confirm the Azure AI Speech voice name at build time.
 voice: en-IN-NeerjaNeural
 
-greeting: "{name}, hello."
+# Address term appended to the farmer's name. English has no natural
+# honorific here, so it is empty and the greeting is just the name.
+honorific: ""
+greeting: "{name}{honorific}, hello."
 greeting_no_name: "Hello."
 
 # Decision 4 of docs/ACS_MISSED_CALL_FEASIBILITY.md: the only confirmation the

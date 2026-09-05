@@ -14,7 +14,15 @@ name: हिन्दी
 # TODO [VERIFY] confirm the Azure AI Speech voice name at build time.
 voice: hi-IN-SwaraNeural
 
-greeting: "{name}, नमस्ते।"
+# Address term appended to the farmer's name. "Kaka" is the respectful
+# term for an older man in Marathi and in Hindi as spoken across the
+# Marathwada and northern belt, and is what a village extension worker
+# would actually say.
+# TODO [VERIFY native speaker] whether "kaka", "bhai" or "ji" fits the
+# pilot districts best; it varies by region and by the speaker's age
+# relative to the farmer.
+honorific: " काका"
+greeting: "{name}{honorific}, नमस्ते।"
 greeting_no_name: "नमस्ते।"
 
 acknowledge:
