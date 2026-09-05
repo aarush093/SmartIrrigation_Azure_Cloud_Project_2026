@@ -1,0 +1,257 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Farmer script samples for review</title>
+<style>
+  :root {
+    --bg: #f7f7f5; --card: #ffffff; --ink: #1b1b1a; --muted: #5d5d57;
+    --line: #e2e0da; --accent: #1f6f3f; --warn-bg: #fff6e0; --warn-line: #e0b34a;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #16161a; --card: #1f1f24; --ink: #edece8; --muted: #a4a29a;
+      --line: #33333a; --accent: #6fcf97; --warn-bg: #2e2717; --warn-line: #7a6224;
+    }
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; padding: 1.1rem 1rem 4rem;
+    background: var(--bg); color: var(--ink);
+    font-family: "Segoe UI", system-ui, -apple-system, sans-serif;
+    font-size: 18px; line-height: 1.65;
+    max-width: 46rem; margin-inline: auto;
+  }
+  h1 { font-size: 1.5rem; line-height: 1.3; margin: 0 0 .3rem; }
+  .sub { color: var(--muted); margin: 0 0 1.3rem; font-size: .95rem; }
+  .ask {
+    background: var(--warn-bg); border: 1px solid var(--warn-line);
+    border-radius: 10px; padding: 1rem 1.1rem; margin-bottom: 1.6rem;
+  }
+  .ask p { margin: 0 0 .6rem; font-weight: 600; }
+  .ask ol { margin: 0; padding-left: 1.3rem; }
+  .ask li { margin-bottom: .45rem; }
+  .case {
+    background: var(--card); border: 1px solid var(--line);
+    border-radius: 12px; padding: 1rem 1.1rem 1.2rem; margin-bottom: 1.15rem;
+  }
+  .case h2 {
+    font-size: 1.06rem; line-height: 1.4; margin: 0 0 .35rem;
+    display: flex; gap: .6rem; align-items: baseline;
+  }
+  .num {
+    flex: none; background: var(--accent); color: #fff;
+    border-radius: 6px; padding: .05rem .5rem;
+    font-size: .82rem; font-weight: 700;
+  }
+  .situation {
+    margin: 0 0 .9rem; color: var(--muted);
+    font-size: .88rem; border-left: 3px solid var(--line); padding-left: .7rem;
+  }
+  .lang { padding: .55rem 0; border-top: 1px solid var(--line); }
+  .lang:first-of-type { border-top: none; }
+  .lang-head {
+    display: flex; flex-wrap: wrap; gap: .5rem; align-items: baseline;
+    margin-bottom: .2rem;
+  }
+  .lang-name { font-weight: 700; font-size: .9rem; }
+  .lang-note { color: var(--muted); font-size: .78rem; }
+  .script { margin: 0; font-size: 1.12rem; line-height: 1.75; }
+  /* The two scripts under review get the explicit stacks and a little more
+     leading, because Devanagari matras and Tamil combining marks are what a
+     reviewer is being asked to look at. */
+  .lang-en .script { color: var(--muted); font-size: 1.02rem; }
+  .lang-hi .script {
+    font-family: "Noto Sans Devanagari", "Nirmala UI", "Mangal", sans-serif;
+    line-height: 1.95;
+  }
+  .lang-ta .script {
+    font-family: "Noto Sans Tamil", "Nirmala UI", "Latha", sans-serif;
+    line-height: 1.95;
+  }
+  footer { color: var(--muted); font-size: .85rem; margin-top: 2rem; }
+</style>
+</head>
+<body>
+  <h1>Farmer script samples</h1>
+  <p class="sub">Every line below is what a farmer <strong>hears</strong> on the
+  phone. Nothing is read; there are no digits anywhere, because a non-reader
+  cannot tell whether &ldquo;6:00&rdquo; means morning or evening.</p>
+
+  <div class="ask">
+    <p>Ye scripts abhi verify nahi hue hain. Padhne wale se poochhna hai:</p>
+    <ol>
+      <li>Kya ye natural lagta hai?</li>
+      <li>Kya koi shabd galat hai?</li>
+      <li>Kya ek kisan bina padhe, sirf sunkar samajh lega?</li>
+    </ol>
+  </div>
+
+    <section class="case">
+      <h2><span class="num">1</span>Night feeder, clock time given, field is dry</h2>
+      <p class="situation">Power tonight 22:00 to 06:00. Run the pump from 22:00 for about 6h 49m.</p>
+      <div class="lang lang-en">
+        <div class="lang-head"><span class="lang-name">English</span><span class="lang-note">Reference. What the line is supposed to mean.</span></div>
+        <p class="script" lang="en">Ram, hello. Power is from ten o&#x27;clock at night to six o&#x27;clock in the morning. The wheat needs water. Start the pump at ten o&#x27;clock at night, and stop it at quarter to five in the morning. The field is dry. Press one to hear this again.</p>
+      </div>
+      <div class="lang lang-hi">
+        <div class="lang-head"><span class="lang-name">हिन्दी · Hindi</span><span class="lang-note">Needs a native speaker.</span></div>
+        <p class="script" lang="hi">राम काका, नमस्ते। बिजली रात दस बजे से सुबह छह बजे तक है। गेहूँ को पानी चाहिए। रात दस बजे पंप चालू करो, और सुबह पौने पाँच बजे बंद कर दो। खेत सूखा है। दोबारा सुनने के लिए एक दबाओ।</p>
+      </div>
+      <div class="lang lang-ta">
+        <div class="lang-head"><span class="lang-name">தமிழ் · Tamil</span><span class="lang-note">Needs a native speaker.</span></div>
+        <p class="script" lang="ta">முருகன் அண்ணா, வணக்கம். இரவு பத்து மணிக்கு முதல் காலை ஆறு மணிக்கு வரை மின்சாரம் இருக்கும். கோதுமை பயிருக்கு தண்ணீர் தேவை. இரவு பத்து மணிக்கு பம்ப் ஆன் செய்யுங்கள், காலை நான்கு மணி நாற்பத்தைந்து நிமிடத்திற்கு நிறுத்துங்கள். நிலம் வறண்டு இருக்கிறது. மீண்டும் கேட்க ஒன்று அழுத்துங்கள்.</p>
+      </div>
+    </section>
+    <section class="case">
+      <h2><span class="num">2</span>Same, after the farmer reported he watered yesterday</h2>
+      <p class="situation">Opens by acknowledging his missed call, which is the only confirmation he gets.</p>
+      <div class="lang lang-en">
+        <div class="lang-head"><span class="lang-name">English</span><span class="lang-note">Reference. What the line is supposed to mean.</span></div>
+        <p class="script" lang="en">Ram, hello. Yesterday you told us you watered the field. Power is from ten o&#x27;clock at night to six o&#x27;clock in the morning. The wheat needs water. Start the pump at ten o&#x27;clock at night, and stop it at quarter to five in the morning. The field is dry. Press one to hear this again.</p>
+      </div>
+      <div class="lang lang-hi">
+        <div class="lang-head"><span class="lang-name">हिन्दी · Hindi</span><span class="lang-note">Needs a native speaker.</span></div>
+        <p class="script" lang="hi">राम काका, नमस्ते। कल आपने बताया था कि पानी दे दिया। बिजली रात दस बजे से सुबह छह बजे तक है। गेहूँ को पानी चाहिए। रात दस बजे पंप चालू करो, और सुबह पौने पाँच बजे बंद कर दो। खेत सूखा है। दोबारा सुनने के लिए एक दबाओ।</p>
+      </div>
+      <div class="lang lang-ta">
+        <div class="lang-head"><span class="lang-name">தமிழ் · Tamil</span><span class="lang-note">Needs a native speaker.</span></div>
+        <p class="script" lang="ta">முருகன் அண்ணா, வணக்கம். நேற்று நீங்கள் தண்ணீர் பாய்ச்சியதாக சொன்னீர்கள். இரவு பத்து மணிக்கு முதல் காலை ஆறு மணிக்கு வரை மின்சாரம் இருக்கும். கோதுமை பயிருக்கு தண்ணீர் தேவை. இரவு பத்து மணிக்கு பம்ப் ஆன் செய்யுங்கள், காலை நான்கு மணி நாற்பத்தைந்து நிமிடத்திற்கு நிறுத்துங்கள். நிலம் வறண்டு இருக்கிறது. மீண்டும் கேட்க ஒன்று அழுத்துங்கள்.</p>
+      </div>
+    </section>
+    <section class="case">
+      <h2><span class="num">3</span>Same, after he reported the power did not come</h2>
+      <p class="situation">Opens by acknowledging the power failure he reported.</p>
+      <div class="lang lang-en">
+        <div class="lang-head"><span class="lang-name">English</span><span class="lang-note">Reference. What the line is supposed to mean.</span></div>
+        <p class="script" lang="en">Ram, hello. Yesterday you told us the power did not come. Power is from ten o&#x27;clock at night to six o&#x27;clock in the morning. The wheat needs water. Start the pump at ten o&#x27;clock at night, and stop it at quarter to five in the morning. The field is dry. Press one to hear this again.</p>
+      </div>
+      <div class="lang lang-hi">
+        <div class="lang-head"><span class="lang-name">हिन्दी · Hindi</span><span class="lang-note">Needs a native speaker.</span></div>
+        <p class="script" lang="hi">राम काका, नमस्ते। कल आपने बताया था कि बिजली नहीं आई। बिजली रात दस बजे से सुबह छह बजे तक है। गेहूँ को पानी चाहिए। रात दस बजे पंप चालू करो, और सुबह पौने पाँच बजे बंद कर दो। खेत सूखा है। दोबारा सुनने के लिए एक दबाओ।</p>
+      </div>
+      <div class="lang lang-ta">
+        <div class="lang-head"><span class="lang-name">தமிழ் · Tamil</span><span class="lang-note">Needs a native speaker.</span></div>
+        <p class="script" lang="ta">முருகன் அண்ணா, வணக்கம். நேற்று மின்சாரம் வரவில்லை என்று சொன்னீர்கள். இரவு பத்து மணிக்கு முதல் காலை ஆறு மணிக்கு வரை மின்சாரம் இருக்கும். கோதுமை பயிருக்கு தண்ணீர் தேவை. இரவு பத்து மணிக்கு பம்ப் ஆன் செய்யுங்கள், காலை நான்கு மணி நாற்பத்தைந்து நிமிடத்திற்கு நிறுத்துங்கள். நிலம் வறண்டு இருக்கிறது. மீண்டும் கேட்க ஒன்று அழுத்துங்கள்.</p>
+      </div>
+    </section>
+    <section class="case">
+      <h2><span class="num">4</span>Morning feeder, called the previous evening</h2>
+      <p class="situation">Power 07:30 to 15:30 TOMORROW. The script must say tomorrow morning, not today.</p>
+      <div class="lang lang-en">
+        <div class="lang-head"><span class="lang-name">English</span><span class="lang-note">Reference. What the line is supposed to mean.</span></div>
+        <p class="script" lang="en">Ram, hello. Tomorrow power is from seven o&#x27;clock in the morning to three o&#x27;clock in the afternoon. The wheat needs water. Start the pump at seven o&#x27;clock in the morning, and stop it at quarter to two in the afternoon. There is not much power time, so do not wait. Press one to hear this again.</p>
+      </div>
+      <div class="lang lang-hi">
+        <div class="lang-head"><span class="lang-name">हिन्दी · Hindi</span><span class="lang-note">Needs a native speaker.</span></div>
+        <p class="script" lang="hi">राम काका, नमस्ते। कल बिजली सुबह सात बजे से दोपहर तीन बजे तक है। गेहूँ को पानी चाहिए। सुबह सात बजे पंप चालू करो, और दोपहर पौने दो बजे बंद कर दो। बिजली का समय कम है, इसलिए देर मत करो। दोबारा सुनने के लिए एक दबाओ।</p>
+      </div>
+      <div class="lang lang-ta">
+        <div class="lang-head"><span class="lang-name">தமிழ் · Tamil</span><span class="lang-note">Needs a native speaker.</span></div>
+        <p class="script" lang="ta">முருகன் அண்ணா, வணக்கம். நாளை காலை ஏழு மணிக்கு முதல் மதியம் மூன்று மணிக்கு வரை மின்சாரம் இருக்கும். கோதுமை பயிருக்கு தண்ணீர் தேவை. காலை ஏழு மணிக்கு பம்ப் ஆன் செய்யுங்கள், மதியம் ஒன்று மணி நாற்பத்தைந்து நிமிடத்திற்கு நிறுத்துங்கள். மின்சார நேரம் குறைவு, அதனால் தாமதிக்க வேண்டாம். மீண்டும் கேட்க ஒன்று அழுத்துங்கள்.</p>
+      </div>
+    </section>
+    <section class="case">
+      <h2><span class="num">5</span>Unreliable feeder, no clock time can be promised</h2>
+      <p class="situation">Reliability below threshold. Says &#x27;when the power comes&#x27; with a duration instead.</p>
+      <div class="lang lang-en">
+        <div class="lang-head"><span class="lang-name">English</span><span class="lang-note">Reference. What the line is supposed to mean.</span></div>
+        <p class="script" lang="en">Ram, hello. Power is not certain today. The wheat needs water. When the power comes, start the pump and run it for four hours fifty minutes, then stop. The field is dry. Press one to hear this again.</p>
+      </div>
+      <div class="lang lang-hi">
+        <div class="lang-head"><span class="lang-name">हिन्दी · Hindi</span><span class="lang-note">Needs a native speaker.</span></div>
+        <p class="script" lang="hi">राम काका, नमस्ते। आज बिजली का पक्का नहीं है। गेहूँ को पानी चाहिए। जब बिजली आए तो पंप चालू करो, चार घंटे पचास मिनट चलाओ, फिर बंद कर दो। खेत सूखा है। दोबारा सुनने के लिए एक दबाओ।</p>
+      </div>
+      <div class="lang lang-ta">
+        <div class="lang-head"><span class="lang-name">தமிழ் · Tamil</span><span class="lang-note">Needs a native speaker.</span></div>
+        <p class="script" lang="ta">முருகன் அண்ணா, வணக்கம். இன்று மின்சாரம் உறுதியாக தெரியவில்லை. கோதுமை பயிருக்கு தண்ணீர் தேவை. மின்சாரம் வந்ததும் பம்ப் ஆன் செய்து நான்கு மணி ஐம்பது நிமிடம் ஓட விடுங்கள், பிறகு நிறுத்துங்கள். நிலம் வறண்டு இருக்கிறது. மீண்டும் கேட்க ஒன்று அழுத்துங்கள்.</p>
+      </div>
+    </section>
+    <section class="case">
+      <h2><span class="num">6</span>Window too short, run is truncated</h2>
+      <p class="situation">Only four hours of power. Runs the whole window and explains the rest follows.</p>
+      <div class="lang lang-en">
+        <div class="lang-head"><span class="lang-name">English</span><span class="lang-note">Reference. What the line is supposed to mean.</span></div>
+        <p class="script" lang="en">Ram, hello. Power is from ten o&#x27;clock at night to two o&#x27;clock at night. The wheat needs water. Start the pump at ten o&#x27;clock at night, and stop it at two o&#x27;clock at night. The field is dry. The power time is short, so we will finish the rest next time. Press one to hear this again.</p>
+      </div>
+      <div class="lang lang-hi">
+        <div class="lang-head"><span class="lang-name">हिन्दी · Hindi</span><span class="lang-note">Needs a native speaker.</span></div>
+        <p class="script" lang="hi">राम काका, नमस्ते। बिजली रात दस बजे से रात दो बजे तक है। गेहूँ को पानी चाहिए। रात दस बजे पंप चालू करो, और रात दो बजे बंद कर दो। खेत सूखा है। बिजली का समय कम है, बाकी अगली बार पूरा करेंगे। दोबारा सुनने के लिए एक दबाओ।</p>
+      </div>
+      <div class="lang lang-ta">
+        <div class="lang-head"><span class="lang-name">தமிழ் · Tamil</span><span class="lang-note">Needs a native speaker.</span></div>
+        <p class="script" lang="ta">முருகன் அண்ணா, வணக்கம். இரவு பத்து மணிக்கு முதல் இரவு இரண்டு மணிக்கு வரை மின்சாரம் இருக்கும். கோதுமை பயிருக்கு தண்ணீர் தேவை. இரவு பத்து மணிக்கு பம்ப் ஆன் செய்யுங்கள், இரவு இரண்டு மணிக்கு நிறுத்துங்கள். நிலம் வறண்டு இருக்கிறது. மின்சார நேரம் குறைவு, மீதியை அடுத்த முறை முடிப்போம். மீண்டும் கேட்க ஒன்று அழுத்துங்கள்.</p>
+      </div>
+    </section>
+    <section class="case">
+      <h2><span class="num">7</span>Opportunistic top-up while power is available</h2>
+      <p class="situation">Field is not yet stressed, but there is power, so top it up.</p>
+      <div class="lang lang-en">
+        <div class="lang-head"><span class="lang-name">English</span><span class="lang-note">Reference. What the line is supposed to mean.</span></div>
+        <p class="script" lang="en">Ram, hello. Power is from ten o&#x27;clock at night to six o&#x27;clock in the morning. The wheat needs water. Start the pump at ten o&#x27;clock at night, and stop it at quarter to five in the morning. There is power time, so give it water. Press one to hear this again.</p>
+      </div>
+      <div class="lang lang-hi">
+        <div class="lang-head"><span class="lang-name">हिन्दी · Hindi</span><span class="lang-note">Needs a native speaker.</span></div>
+        <p class="script" lang="hi">राम काका, नमस्ते। बिजली रात दस बजे से सुबह छह बजे तक है। गेहूँ को पानी चाहिए। रात दस बजे पंप चालू करो, और सुबह पौने पाँच बजे बंद कर दो। बिजली है, इसलिए पानी दे दो। दोबारा सुनने के लिए एक दबाओ।</p>
+      </div>
+      <div class="lang lang-ta">
+        <div class="lang-head"><span class="lang-name">தமிழ் · Tamil</span><span class="lang-note">Needs a native speaker.</span></div>
+        <p class="script" lang="ta">முருகன் அண்ணா, வணக்கம். இரவு பத்து மணிக்கு முதல் காலை ஆறு மணிக்கு வரை மின்சாரம் இருக்கும். கோதுமை பயிருக்கு தண்ணீர் தேவை. இரவு பத்து மணிக்கு பம்ப் ஆன் செய்யுங்கள், காலை நான்கு மணி நாற்பத்தைந்து நிமிடத்திற்கு நிறுத்துங்கள். மின்சாரம் இருக்கிறது, தண்ணீர் பாய்ச்சுங்கள். மீண்டும் கேட்க ஒன்று அழுத்துங்கள்.</p>
+      </div>
+    </section>
+    <section class="case">
+      <h2><span class="num">8</span>Short run, under an hour</h2>
+      <p class="situation">A small deficit on a strong pump.</p>
+      <div class="lang lang-en">
+        <div class="lang-head"><span class="lang-name">English</span><span class="lang-note">Reference. What the line is supposed to mean.</span></div>
+        <p class="script" lang="en">Ram, hello. Power is not certain today. The wheat needs water. When the power comes, start the pump and run it for thirty five minutes, then stop. The field is dry. Press one to hear this again.</p>
+      </div>
+      <div class="lang lang-hi">
+        <div class="lang-head"><span class="lang-name">हिन्दी · Hindi</span><span class="lang-note">Needs a native speaker.</span></div>
+        <p class="script" lang="hi">राम काका, नमस्ते। आज बिजली का पक्का नहीं है। गेहूँ को पानी चाहिए। जब बिजली आए तो पंप चालू करो, पैंतीस मिनट चलाओ, फिर बंद कर दो। खेत सूखा है। दोबारा सुनने के लिए एक दबाओ।</p>
+      </div>
+      <div class="lang lang-ta">
+        <div class="lang-head"><span class="lang-name">தமிழ் · Tamil</span><span class="lang-note">Needs a native speaker.</span></div>
+        <p class="script" lang="ta">முருகன் அண்ணா, வணக்கம். இன்று மின்சாரம் உறுதியாக தெரியவில்லை. கோதுமை பயிருக்கு தண்ணீர் தேவை. மின்சாரம் வந்ததும் பம்ப் ஆன் செய்து முப்பத்தைந்து நிமிடம் ஓட விடுங்கள், பிறகு நிறுத்துங்கள். நிலம் வறண்டு இருக்கிறது. மீண்டும் கேட்க ஒன்று அழுத்துங்கள்.</p>
+      </div>
+    </section>
+    <section class="case">
+      <h2><span class="num">9</span>Skip: rain is expected</h2>
+      <p class="situation">Do not run the pump. No window is named because none is being used.</p>
+      <div class="lang lang-en">
+        <div class="lang-head"><span class="lang-name">English</span><span class="lang-note">Reference. What the line is supposed to mean.</span></div>
+        <p class="script" lang="en">Ram, hello. Do not run the pump today. Rain is expected. If the rain does not come, we will call you again. Press one to hear this again.</p>
+      </div>
+      <div class="lang lang-hi">
+        <div class="lang-head"><span class="lang-name">हिन्दी · Hindi</span><span class="lang-note">Needs a native speaker.</span></div>
+        <p class="script" lang="hi">राम काका, नमस्ते। आज पंप मत चलाओ। बारिश आने वाली है। अगर बारिश नहीं आई तो हम फिर फोन करेंगे। दोबारा सुनने के लिए एक दबाओ।</p>
+      </div>
+      <div class="lang lang-ta">
+        <div class="lang-head"><span class="lang-name">தமிழ் · Tamil</span><span class="lang-note">Needs a native speaker.</span></div>
+        <p class="script" lang="ta">முருகன் அண்ணா, வணக்கம். இன்று பம்ப் ஓட்ட வேண்டாம். மழை வரப்போகிறது. மழை வரவில்லை என்றால் நாங்கள் மீண்டும் அழைப்போம். மீண்டும் கேட்க ஒன்று அழுத்துங்கள்.</p>
+      </div>
+    </section>
+    <section class="case">
+      <h2><span class="num">10</span>Next-day question, asked when no missed call arrived</h2>
+      <p class="situation">The keypress fallback. Never the primary channel.</p>
+      <div class="lang lang-en">
+        <div class="lang-head"><span class="lang-name">English</span><span class="lang-note">Reference. What the line is supposed to mean.</span></div>
+        <p class="script" lang="en">Ram, hello. Did you water the field yesterday? Press one for yes, two for no.</p>
+      </div>
+      <div class="lang lang-hi">
+        <div class="lang-head"><span class="lang-name">हिन्दी · Hindi</span><span class="lang-note">Needs a native speaker.</span></div>
+        <p class="script" lang="hi">राम काका, नमस्ते। कल पानी दिया? हाँ के लिए एक दबाओ, नहीं के लिए दो दबाओ।</p>
+      </div>
+      <div class="lang lang-ta">
+        <div class="lang-head"><span class="lang-name">தமிழ் · Tamil</span><span class="lang-note">Needs a native speaker.</span></div>
+        <p class="script" lang="ta">முருகன் அண்ணா, வணக்கம். நேற்று தண்ணீர் பாய்ச்சினீர்களா? ஆம் என்றால் ஒன்று அழுத்துங்கள், இல்லை என்றால் இரண்டு.</p>
+      </div>
+    </section>
+
+  <footer>Generated from <code>results/script_samples.txt</code> by
+  <code>make script-html</code>. Until a native speaker has read this, the Hindi
+  and Tamil masters stay marked <code>TODO [VERIFY native speaker]</code> and the
+  report says so.</footer>
+</body>
+</html>
