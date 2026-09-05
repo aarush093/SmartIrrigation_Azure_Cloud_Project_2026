@@ -1,0 +1,92 @@
+# Constants for the FAO-56 Penman-Monteith reference evapotranspiration.
+#
+# Source: R. G. Allen, L. S. Pereira, D. Raes and M. Smith, "Crop
+# evapotranspiration", FAO Irrigation and Drainage Paper 56, 1998, Chapters 2
+# and 3 and Annex 2. Plan reference R20.
+#
+# Physical constants (Stefan-Boltzmann, the solar constant, the psychrometric
+# coefficient) are part of the equation rather than project choices, but they are
+# held here so that every number the engine uses is inspectable in one place and
+# none is buried in code.
+
+# --- Equation 6, the combination equation --------------------------------------
+# ET0 = [0.408 D (Rn - G) + g (900/(T+273)) u2 (es - ea)]
+#       / [D + g (1 + 0.34 u2)]
+combination:
+  radiation_conversion: 0.408   # MJ/m2/day to mm/day, the inverse latent heat
+  temperature_offset: 273.0     # degC to K in the aerodynamic term
+  wind_numerator: 900.0         # for the daily time step; 37 for hourly
+  wind_denominator_coeff: 0.34  # bulk surface resistance of the reference crop
+
+# --- Equation 53, the hourly time step -----------------------------------------
+# ET0hr = [0.408 D (Rn - G) + g (37/(Thr+273)) u2 (e0(Thr) - ea)]
+#         / [D + g (1 + 0.34 u2)]
+#
+# The wind coefficient is 37, read from FAO-56 Chapter 4 at
+# https://www.fao.org/4/x0490e/x0490e08.htm. Note that it is NOT 900/24 = 37.5;
+# the paper prints 37. The denominator coefficient 0.34 is unchanged from the
+# daily form.
+#
+# Soil heat flux is no longer negligible at this time step (FAO-56 equations 45
+# and 46, Chapter 3 at https://www.fao.org/4/x0490e/x0490e07.htm):
+#     Ghr = 0.1 Rn  during daylight
+#     Ghr = 0.5 Rn  at night
+hourly:
+  wind_numerator: 37.0
+  soil_heat_flux_daylight: 0.1   # FAO-56 equation 45
+  soil_heat_flux_night: 0.5      # FAO-56 equation 46
+  # Longitude of the centre of the local time zone, degrees west of Greenwich.
+  # IST is UTC+5:30, centred on 82.5 degrees EAST, hence 360 - 82.5.
+  timezone_centre_longitude_west: 277.5
+
+# --- Atmospheric parameters, FAO-56 equations 7 to 13 --------------------------
+atmosphere:
+  # Equation 7: P = 101.3 ((293 - 0.0065 z) / 293)^5.26
+  sea_level_pressure_kpa: 101.3
+  lapse_rate: 0.0065
+  reference_temperature_k: 293.0
+  pressure_exponent: 5.26
+  # Equation 8: psychrometric constant g = 0.665e-3 P
+  psychrometric_coefficient: 0.000665
+  # Equations 11 and 13: saturation vapour pressure and its slope
+  svp_a: 0.6108
+  svp_b: 17.27
+  svp_c: 237.3
+  slope_numerator: 4098.0
+
+# --- Radiation, FAO-56 equations 21 to 39 --------------------------------------
+radiation:
+  solar_constant: 0.0820            # Gsc, MJ/m2/min
+  albedo: 0.23                      # alpha for the reference grass surface
+  stefan_boltzmann: 0.000000004903  # sigma, MJ/K4/m2/day
+  clear_sky_a: 0.75                 # Rso = (0.75 + 2e-5 z) Ra, equation 37
+  clear_sky_b: 0.00002
+  net_longwave_a: 0.34              # equation 39 humidity term
+  net_longwave_b: -0.14
+  cloudiness_a: 1.35                # equation 39 cloudiness term
+  cloudiness_b: -0.35
+  # Daily soil heat flux is negligible relative to Rn, so FAO-56 sets G = 0 for
+  # a daily time step (equation 42).
+  soil_heat_flux_daily: 0.0
+
+# --- Fallbacks when a measurement is missing, FAO-56 Chapter 3 -----------------
+# Each fallback degrades accuracy. They exist because Open-Meteo supplies ET0
+# directly and this implementation is a cross-check, so it must run on whatever
+# variables the archive actually carries for a given station-day.
+fallbacks:
+  # Equation 47 recommendation where no wind measurement exists.
+  default_wind_speed_2m: 2.0
+  # Hargreaves radiation formula, equation 50: Rs = kRs sqrt(Tmax - Tmin) Ra.
+  hargreaves_coefficient_interior: 0.16
+  hargreaves_coefficient_coastal: 0.19
+  # Where humidity is missing, FAO-56 Chapter 3 takes the dewpoint as the daily
+  # minimum temperature, so ea = e0(Tmin). In arid climates this overestimates
+  # actual vapour pressure and therefore understates ET0.
+  dewpoint_equals_tmin: true
+
+# --- Validity bounds -----------------------------------------------------------
+# A daily ET0 outside this range is a computation error, not a real day: the
+# highest daily ET0 recorded in hot arid conditions is well under 20 mm.
+bounds:
+  min_et0_mm: 0.0
+  max_et0_mm: 20.0

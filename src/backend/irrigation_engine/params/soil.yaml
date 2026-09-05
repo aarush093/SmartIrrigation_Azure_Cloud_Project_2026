@@ -1,0 +1,71 @@
+# Saxton and Rawls (2006) pedotransfer coefficients.
+#
+# Source: K. E. Saxton and W. J. Rawls, "Soil water characteristic estimates by
+# texture and organic matter for hydrologic solutions", Soil Science Society of
+# America Journal, 70(5), pp. 1569-1578, 2006. Plan reference R21.
+#
+# The published equations take sand and clay as mass FRACTIONS (0 to 1) and
+# organic matter as a PERCENTAGE by weight. Organic matter is derived from soil
+# organic carbon by the conventional Van Bemmelen factor below. Getting either
+# unit wrong produces a plausible but wrong available water, which is why the
+# conversion is named here and unit-tested rather than inlined.
+#
+# Equation numbers refer to the paper's Table 1.
+
+# Soil organic carbon to soil organic matter. Conventional Van Bemmelen factor.
+# Widely used but approximate; the true factor varies with soil.
+organic_matter_from_carbon: 1.724  # TODO [VERIFY] against a soils reference for Indian soils
+
+# --- Equation 1: moisture at 1500 kPa tension (permanent wilting point) -------
+# theta_1500t = -0.024 S + 0.487 C + 0.006 OM + 0.005 (S x OM)
+#               - 0.013 (C x OM) + 0.068 (S x C) + 0.031
+# theta_1500  = theta_1500t + (0.14 x theta_1500t - 0.02)
+wilting_point:
+  sand: -0.024
+  clay: 0.487
+  organic_matter: 0.006
+  sand_x_om: 0.005
+  clay_x_om: -0.013
+  sand_x_clay: 0.068
+  intercept: 0.031
+  adjust_slope: 0.14
+  adjust_intercept: -0.02
+
+# --- Equation 2: moisture at 33 kPa tension (field capacity) ------------------
+# theta_33t = -0.251 S + 0.195 C + 0.011 OM + 0.006 (S x OM)
+#             - 0.027 (C x OM) + 0.452 (S x C) + 0.299
+# theta_33  = theta_33t + (1.283 theta_33t^2 - 0.374 theta_33t - 0.015)
+field_capacity:
+  sand: -0.251
+  clay: 0.195
+  organic_matter: 0.011
+  sand_x_om: 0.006
+  clay_x_om: -0.027
+  sand_x_clay: 0.452
+  intercept: 0.299
+  adjust_quadratic: 1.283
+  adjust_linear: -0.374
+  adjust_intercept: -0.015
+
+# --- Density adjustment -------------------------------------------------------
+# The equations above assume a normal-density soil. Where the measured bulk
+# density differs, field capacity is adjusted for the compaction or loosening.
+# Saxton and Rawls give a normal density from the estimated saturation; the
+# ratio of measured to normal density scales the matric water contents.
+density:
+  # Particle density of mineral soil, g/cm3. Standard value.
+  particle_density: 2.65
+  # Bulk density outside this range indicates a unit error upstream (SoilGrids
+  # reports cg/cm3) rather than an unusual soil, so it is rejected.
+  min_bulk_density: 0.8
+  max_bulk_density: 2.0
+
+# --- Physical validity bounds -------------------------------------------------
+# Applied after the regressions. A result outside these is a bug or a bad input,
+# never a real soil, and is raised rather than clamped silently.
+bounds:
+  min_theta: 0.01
+  max_theta: 0.75
+  # Field capacity must exceed wilting point by at least this much, or the soil
+  # holds no usable water and the depth calculation would divide meaning by zero.
+  min_available_water_fraction: 0.01

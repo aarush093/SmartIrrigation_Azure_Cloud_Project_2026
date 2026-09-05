@@ -1,0 +1,122 @@
+# English script master.
+#
+# Rules, from plan Section 5.5. Every one of them is enforced by
+# tests/test_scripts.py, which is the direct evidence for the accessibility
+# claim in the report.
+#
+#   1. NEVER say millimetres, evapotranspiration, depletion or percent soil
+#      moisture. Only minutes, clock times, and rain in familiar words.
+#   2. One decision per call. One number per decision.
+#   3. Every recommendation carries a one-line reason in plain words.
+#   4. The farmer's missed call is always right.
+#
+# The farmer is told WHEN TO START and WHEN TO STOP, never a raw duration. He
+# cannot convert 409 minutes into a stop time, and he will be asleep. Duration
+# is mentioned second, in hours and minutes, and only as reassurance.
+
+language: en
+name: English
+# TODO [VERIFY] confirm the Azure AI Speech voice name at build time.
+voice: en-IN-NeerjaNeural
+
+# Address term appended to the farmer's name. English has no natural
+# honorific here, so it is empty and the greeting is just the name.
+honorific: ""
+greeting: "{name}{honorific}, hello."
+greeting_no_name: "Hello."
+
+# Decision 4 of docs/ACS_MISSED_CALL_FEASIBILITY.md: the only confirmation the
+# farmer ever gets that his missed call registered, carried on a call that was
+# happening anyway. It also lets him correct us if we logged the wrong thing.
+acknowledge:
+  water_given: "Yesterday you told us you watered the field."
+  power_failed: "Yesterday you told us the power did not come."
+
+# The spoken times already carry their part of day, so these sentences must NOT
+# repeat it. Only the day is framed here: today needs no word, tomorrow does.
+power:
+  today: "Power is from {start} to {end}."
+  tomorrow: "Tomorrow power is from {start} to {end}."
+  unreliable: "Power is not certain today."
+
+crop_needs_water: "The {crop} needs water."
+
+instruction:
+  with_time: "Start the pump at {start}, and stop it at {stop}."
+  when_power_comes: "When the power comes, start the pump and run it for {duration}, then stop."
+
+duration:
+  hours_and_minutes: "{hours} hours {minutes} minutes"
+  hours_only: "{hours} hours"
+  one_hour: "one hour"
+  minutes_only: "{minutes} minutes"
+
+reason:
+  stress_imminent: "The field is dry."
+  capacity_limit: "There is not much power time, so do not wait."
+  opportunistic_topup: "There is power time, so give it water."
+  rain_expected: "It will rain."
+  carry_over: "The power time is short, so we will finish the rest next time."
+
+skip:
+  opening: "Do not run the pump today."
+  rain: "Rain is expected."
+  followup: "If the rain does not come, we will call you again."
+
+question:
+  did_you_water: "Did you water the field yesterday? Press one for yes, two for no."
+
+repeat: "Press one to hear this again."
+
+# --- Spoken clock times -------------------------------------------------------
+# A farmer-facing script contains NO DIGITS. Every time is spoken in words with
+# its part of day, because "6:00" does not tell a non-reader whether it is
+# morning or evening, and a text-to-speech voice handed a numeral renders it
+# unpredictably.
+#
+# Stop times and spoken durations are both rounded to five minutes, so the
+# vocabulary needed is small: twelve hours, twelve multiples of five, and the
+# quarter and half forms.
+time:
+  numbers:
+    1: one
+    2: two
+    3: three
+    4: four
+    5: five
+    6: six
+    7: seven
+    8: eight
+    9: nine
+    10: ten
+    11: eleven
+    12: twelve
+  # Every multiple of five, because a spoken DURATION may need 15, 30 or 45
+  # even though a clock time at those minutes uses the quarter and half
+  # forms below instead.
+  minutes:
+    5: five
+    10: ten
+    15: fifteen
+    20: twenty
+    25: twenty five
+    30: thirty
+    35: thirty five
+    45: forty five
+    40: forty
+    50: fifty
+    55: fifty five
+  part_of_day:
+    morning: in the morning
+    afternoon: in the afternoon
+    evening: in the evening
+    night: at night
+  # English says "quarter past" and "half past" rather than counting the
+  # minutes, so those forms are used for clock times.
+  uses_quarter_forms: true
+  forms:
+    oclock: "{hour} o'clock {part}"
+    quarter_past: "quarter past {hour} {part}"
+    half_past: "half past {hour} {part}"
+    quarter_to: "quarter to {next_hour} {part}"
+    minutes_past: "{minutes} minutes past {hour} {part}"

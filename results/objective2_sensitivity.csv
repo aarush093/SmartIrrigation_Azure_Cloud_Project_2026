@@ -1,0 +1,13 @@
+"# Objective 2 uncertainty budget, expressed in pump minutes"
+"# wheat mid-season Kc 1.15, 4047.0 m2, furrow Ea 0.65, 7-day interval"
+# baseline run for 25.0 mm net = 409.4 min
+
+error_term,etc_error_mm_over_7_days,extra_pump_minutes,share_of_baseline
+Overall bias +0.065 mm/day,0.52,8.6,0.021
+Vellore bias +0.205 mm/day,1.65,27.0,0.066
+"MAE 0.279 mm/day, fully correlated",2.25,36.8,0.090
+"MAE 0.279 mm/day, independent across days",0.85,13.9,0.034
+
+comparison_term,minutes_spread,share_of_baseline
+Application efficiency Ea 0.55 vs 0.75,129.0,0.315
+Pump discharge 20 percent low (no bucket test),102.3,0.250

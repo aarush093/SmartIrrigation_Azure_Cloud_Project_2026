@@ -228,3 +228,99 @@ would issue advice into a void and never learn whether it was right. With them:
 
 *Phase-I: planning and documentation. This diagram describes the proposed
 workflow; implementation begins in Phase-II.*
+
+---
+
+# Phase-II overlay: the farmer's day
+
+Added 5 September 2026 by Aarush Pandit (23BIT0416). **The Phase-I diagram above
+is unchanged.** Phase-I described the workflow in terms of data stages; this
+describes it in terms of what actually happens to a farmer, because that is what
+the Phase-II refinement changed.
+
+```mermaid
+flowchart TB
+  subgraph Once["Once, at onboarding, about five minutes"]
+    ON["Extension worker fills the PWA form:<br/>phone · language · location · crop · sowing date<br/>area in the farmer's own unit · irrigation method"]
+    SOIL["ONE question, three icons:<br/>reti / domat / chikni"]
+    PUMP["Bucket test: litres and seconds<br/>(nameplate only as fallback)"]
+    WIN["Feeder window: pick the substation,<br/>or declare the day/night rotation"]
+    CARD["Laminated card with three numbers<br/>and three icons"]
+  end
+
+  subgraph Daily["Every day, automatic, no human"]
+    PULL["Pull forecast + ET0"]
+    BAL["FAO-56 water balance<br/>depletion in mm"]
+    MIN["Convert to pump MINUTES<br/>for this farmer's pump"]
+    SCHED{"Fits the next<br/>power window?"}
+    SKIP["Rain covers it?<br/>calibrated, not raw"]
+  end
+
+  subgraph Call["One call, about 30 seconds, before the window opens"]
+    TIME["Placed 07:00 to 21:00 IST only<br/>evening preferred"]
+    SCRIPT["Spoken in his language.<br/>NO DIGITS: 'raat das baje chaalu karo,<br/>subah paune paanch baje band karo'"]
+    REASON["One reason in plain words:<br/>'khet sookha hai'"]
+  end
+
+  subgraph Back["What the farmer sends back, free"]
+    A["Ring A<br/>paani de diya"]
+    B["Ring B<br/>bijli nahi aayi"]
+    C["Ring C<br/>plan dobara sunao"]
+    K["Or press 1 / 2 next day<br/>(fallback, rarely used)"]
+  end
+
+  subgraph Learn["What the system does with it"]
+    CREDIT["Credit the planned depth<br/>to the water balance"]
+    REL["Lower this feeder's reliability<br/>r = 0.3·outcome + 0.7·r"]
+    REPLAN["Recompute today"]
+    ACK["Next call opens:<br/>'kal aapne bataya tha...'"]
+  end
+
+  ON --> SOIL --> PUMP --> WIN --> CARD
+  WIN --> PULL
+  SOIL --> BAL
+  PUMP --> MIN
+  PULL --> BAL --> MIN --> SCHED
+
+  SCHED -->|"yes, and needed"| TIME
+  SCHED -->|"no: fill this window,<br/>carry the rest"| TIME
+  SCHED -->|"not needed yet"| NOCALL["No call.<br/>Nothing is being asked."]
+  SKIP -->|"yes"| SKIPCALL["Call: 'aaj pump mat chalao'"]
+  BAL --> SKIP
+
+  TIME --> SCRIPT --> REASON --> FARMER((Farmer))
+  SKIPCALL --> FARMER
+  CARD -.icons.-> FARMER
+
+  FARMER --> A --> CREDIT --> BAL
+  FARMER --> B --> REL --> REPLAN --> SCHED
+  FARMER --> C --> REPLAY["Immediate callback"]
+  FARMER -.if no call arrived.-> K --> CREDIT
+
+  CREDIT --> ACK
+  REL --> ACK
+  ACK -.next day.-> SCRIPT
+
+  classDef nohw fill:#dcfce7,stroke:#16a34a
+  classDef free fill:#dbeafe,stroke:#2563eb
+  class A,B,C,K free
+  class SOIL,PUMP nohw
+```
+
+## The five things this diagram is making a point about
+
+1. **No hardware anywhere.** Soil comes from one spoken question, pump discharge
+   from a bucket and a watch, the power window from a circular or the farmer's
+   own account of his rotation. Nothing is installed in the field.
+2. **The missed call is the sensor.** Rings A, B and C are the only state inputs
+   after onboarding, and each is free to the farmer because the call is rejected
+   without being answered.
+3. **A call happens only when something is asked.** A day with no need produces
+   silence, because a farmer called on days when nothing is wanted stops
+   answering on the days when something is.
+4. **The instruction is a clock time, not a duration.** He is told when to start
+   and when to stop, in words, with the part of day attached. Not one digit
+   reaches him.
+5. **Feedback closes the loop with no extra call.** The acknowledgement rides on
+   the next scheduled call, which is the only confirmation he ever gets that his
+   missed call registered, and it lets him correct a wrong entry.

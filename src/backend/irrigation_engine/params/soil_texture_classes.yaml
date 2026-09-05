@@ -1,0 +1,107 @@
+# Farmer-declared soil texture classes.
+#
+# ============================================================================
+# WHY THIS IS THE PRIMARY INPUT, NOT THE FALLBACK
+#
+# Phase-I already recorded that the ISRIC SoilGrids REST API had been paused,
+# and on 3 September 2026 it returned every property null for all three pilot
+# points. A zero-hardware claim cannot rest on a source that returns nothing.
+#
+# So the relationship is inverted. **The farmer's own answer is primary.**
+# SoilGrids, when it responds, prefills that answer so the operator confirms
+# rather than guesses; when it does not, the farmer's answer stands and nothing
+# fails.
+#
+# This is a better design, not a workaround, for a reason that has nothing to do
+# with API availability: a farmer knows his own soil, and his answer describes
+# HIS PLOT. A SoilGrids value describes a 250 m grid pixel that may straddle a
+# road, a canal and three different holdings. On a smallholding of half a
+# hectare the farmer is the better instrument.
+#
+# The onboarding question is one question with three icon choices, answerable by
+# someone who cannot read, and it is a question every cultivator can answer
+# immediately about his own field.
+# ============================================================================
+
+# --- Sources -----------------------------------------------------------------
+# Representative texture triples are the approximate centroids of the USDA soil
+# texture triangle classes. They are stated as sand/silt/clay mass fractions
+# summing to 1.0, which is what the Saxton and Rawls pedotransfer takes.
+#
+# TODO [VERIFY] against a printed USDA texture triangle before the pilot. These
+# are working centroids, not values read off a published table, and the same
+# discipline applies here as to the FAO-56 constants: nothing is marked verified
+# that has not been checked.
+verified: false
+
+# Bulk density defaults per class. A real measurement is never available at
+# onboarding, so a class-typical value is used.
+# TODO [VERIFY] typical bulk densities for Indian agricultural soils by class.
+
+classes:
+
+  sandy:
+    display_name: Sandy
+    # USDA "sandy loam" centroid rather than pure sand: a farmer who says his
+    # soil is sandy almost never means a dune. Choosing the loam end of the
+    # sandy range is the conservative reading, since it does not understate
+    # available water and so does not trigger needless irrigation.
+    sand: 0.65
+    silt: 0.25
+    clay: 0.10
+    bulk_density: 1.50
+    # What the farmer is actually asked, in each language. These are farm words,
+    # not soil-science words.
+    # TODO [VERIFY native speaker] each term below.
+    names:
+      en: sandy
+      hi: "रेती"
+      ta: "மணல்"
+    # Plain-language cue an extension worker can use to disambiguate, spoken
+    # rather than read.
+    cue:
+      en: "Water sinks away fast. It will not hold a ball when wet."
+      hi: "पानी जल्दी उतर जाता है। गीली मिट्टी की गोली नहीं बनती।"
+      ta: "தண்ணீர் விரைவாக இறங்கும். ஈரமான மண் உருண்டையாகாது."
+
+  loamy:
+    display_name: Loamy
+    # USDA "loam" centroid. The middle of the triangle and the most common
+    # answer, which is why it is also the fallback when nothing is known.
+    sand: 0.40
+    silt: 0.40
+    clay: 0.20
+    bulk_density: 1.35
+    names:
+      en: loamy
+      hi: "दोमट"
+      ta: "வண்டல்"
+    cue:
+      en: "Holds together when wet but crumbles easily."
+      hi: "गीली हो तो गोली बन जाती है, पर आसानी से टूट जाती है।"
+      ta: "ஈரமாக இருக்கும்போது உருண்டையாகும், ஆனால் எளிதில் உடையும்."
+
+  clayey:
+    display_name: Clayey
+    # USDA "clay" centroid.
+    sand: 0.22
+    silt: 0.20
+    clay: 0.58
+    bulk_density: 1.25
+    names:
+      en: clayey
+      hi: "चिकनी"
+      ta: "களிமண்"
+    cue:
+      en: "Sticky when wet, cracks when dry."
+      hi: "गीली हो तो चिपकती है, सूखे पर दरारें पड़ती हैं।"
+      ta: "ஈரமாக இருக்கும்போது ஒட்டும், காய்ந்தால் வெடிக்கும்."
+
+# --- Fallback -----------------------------------------------------------------
+# Used only when neither the farmer nor SoilGrids has supplied anything.
+#
+# **It must never be used silently for a real farmer.** Every use is logged and
+# surfaced on the operator screen, because a recommendation computed from a
+# guessed soil is a recommendation whose depth could be wrong by a factor of
+# two, and the operator is the only person in a position to go and ask.
+fallback_class: loamy

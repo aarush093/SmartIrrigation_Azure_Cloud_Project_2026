@@ -1,0 +1,22 @@
+# Normalise line endings in the repository to LF regardless of the checkout
+# platform. The team works across Windows and Linux and CI runs on Linux;
+# without this, whole-file CRLF diffs obscure the real change history.
+* text=auto eol=lf
+
+# Binary assets: never normalise, never diff as text.
+*.png   binary
+*.jpg   binary
+*.jpeg  binary
+*.gif   binary
+*.pdf   binary
+*.mp3   binary
+*.wav   binary
+*.ico   binary
+*.woff  binary
+*.woff2 binary
+
+# Shell scripts must keep LF even if a contributor's editor prefers CRLF.
+*.sh    text eol=lf
+
+# Generated lockfiles are collapsed in pull request diffs.
+package-lock.json linguist-generated=true
