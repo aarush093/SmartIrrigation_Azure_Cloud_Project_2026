@@ -928,3 +928,138 @@ coverage or whether the service was degraded on the day, before the pilot.
   a retired one fails at synthesis rather than at deployment.
 - All three non-English masters carry `TODO [VERIFY native speaker]` and must not
   reach the field until checked, for register as much as for grammar.
+---
+
+## 2026-09-05 — Script wording, soil inversion, crop correction, and M4
+
+1,264 tests, `ruff`, `ruff format` and `mypy --strict` clean across 54 source
+files.
+
+### The Hindi in the M3 report was mangled in transit, not in the data
+
+Settled at the byte level rather than by assertion. `बिजली` is
+U+092C 093F 091C 0932 0940, complete, and the sentence carries all seven of its
+spaces. The corruption happened somewhere in the copy-paste path between the
+terminal and the message.
+
+That could not have been established from console output, which is the point.
+`make script-samples` now writes every rendered script to
+`results/script_samples.txt` in UTF-8, and `tests/test_script_vocabulary.py`
+checks the wording at the data level where a display cannot interfere:
+
+- **every rendered token must appear in a vocabulary derived from the master
+  itself**, so a concatenation of two words is not in it;
+- **no token may be a strict prefix of a longer vocabulary word**, which is what
+  distinguishes truncation from a merely unknown token;
+- no two adjacent tokens may be identical;
+- exhaustively across every hour and quarter, in all three languages.
+
+The vocabulary is derived rather than listed, so it cannot drift out of date
+when a line is reworded.
+
+### No digit now reaches a farmer
+
+Clock times as digits were the wrong output for this user on two counts: a
+farmer who cannot read does not know whether `6:00` is morning or evening, and a
+text-to-speech voice handed a numeral renders it unpredictably. This is the
+single most important string the system produces and it carried the most
+ambiguity.
+
+`speak_time` and `speak_duration` now render every time and duration in words
+with its part of day. Hindi uses its irregular half-hour forms, `डेढ़` for 1:30
+and `ढाई` for 2:30, rather than `साढ़े एक`; getting that wrong would break
+nothing and would mark the script immediately as machine-written to any Hindi
+speaker. Whether a language uses quarter forms at all is declared in the master
+rather than inferred from which words happen to be listed, which is what let
+Tamil use its regular construction throughout.
+
+The report's claim tightens from "no technical units" to **no digits at all**,
+across ASCII, Devanagari and Tamil numerals. That is simpler, stronger, and
+checkable in a second at a viva.
+
+**The change introduced a bug of its own, caught by generating the sample file.**
+The sentence frame still named the period while the spoken time also carried it,
+so English read "tonight power is from ten o'clock at night" and Tamil produced
+a visibly doubled word, "இன்று இரவு இரவு". The frame now names only the day.
+A general test asserts no token is ever repeated adjacently, in any language, in
+any schedule state.
+
+### SoilGrids demoted from primary to prefill
+
+It returned every property null for all three pilot points, and Phase-I had
+already recorded that its REST API was paused. A zero-hardware claim cannot rest
+on a source that returns nothing.
+
+**The farmer's declared soil texture is now the primary input.** Onboarding asks
+one question with three icon choices, `reti`, `domat`, `chikni`, each with a
+spoken cue an extension worker can read aloud. SoilGrids prefills the answer
+where it responds; where it does not, the answer stands and nothing fails.
+
+This is a better design and not a workaround, for a reason unrelated to
+availability: a farmer knows his own soil, and his answer describes **his plot**,
+while a SoilGrids value describes a 250 m pixel that may straddle a road, a canal
+and three holdings. On half a hectare the farmer is the better instrument.
+
+`resolve_soil` returns the source alongside the profile. A `FALLBACK` source is
+never used silently: the demo prints a warning and the operator screen surfaces
+it, because a depth computed from a guessed soil can be wrong by a factor of two
+and the operator is the only person able to go and ask.
+
+`params/soil_texture_classes.yaml` carries `verified: false` and
+`TODO [VERIFY]` on the USDA centroids, under the same discipline as the FAO-56
+constants.
+
+### The Vellore demo farmer was growing the wrong crop
+
+Wheat is a rabi crop sown in November, and Vellore is not a wheat district. A
+September wheat field in Tamil Nadu would have undermined everything correct
+behind it in front of an agriculture-literate reviewer.
+
+It is now **groundnut**, genuinely grown there, in the seeded crop set, and
+mid-season in early September from a mid-June kharif sowing. Every sowing date
+across the three farmers is now chosen so the crop is at a plausible **stage** on
+the demonstration date rather than merely inside its growing period, and the
+season and sowing window for each is named in a comment so the choice is visibly
+deliberate.
+
+### M4: both handoff packages are ready
+
+Nothing under `handoff/` is committed here; `handoff/` is gitignored and only
+`docs/HANDOFF_STATUS.md` and the Makefile change are on this branch.
+
+**Frontend, for Nayan.** Vite, React 18, Tailwind, `vite-plugin-pwa`, and the
+Static Web Apps workflow placed inside the package so the deployment workflow
+arrives in his own pull request. Three-tile home screen, seven-day bucket,
+operator onboarding including the new soil question and the bucket-test fields,
+language switch, and a specification for the three missed-call card icons.
+
+The power window is drawn as an arc on a 24-hour **ring** rather than a bar,
+because a night window crosses midnight and on a bar becomes two disconnected
+pieces at opposite ends. Rain is a **filling drop** rather than a percentage,
+since no percentage may reach a farmer.
+
+**AI/ML, for Krishna.** `train_soil_moisture.py` for Objective 3 alongside the
+two calibration scripts. `simulate_policies.py` is written rather than
+scaffolded and imports the engine rather than reimplementing the water balance,
+so the four-policy comparison cannot drift away from the system it evaluates.
+The other three are scaffolded with the feature list, the chronological split
+rule and the reporting contract fixed, so the result is comparable and honest
+whatever architecture he chooses.
+
+Each `HANDOFF_README.md` gives the exact web-upload steps and a ready-to-paste
+pull request description.
+
+`make sim` prefers `src/ai_model/simulate_policies.py` once he commits it and
+falls back to the handoff copy until then, so Objective 6 is runnable now rather
+than blocked on his upload.
+
+### Carried forward
+
+- `results/script_samples.txt` awaits a native speaker. Until then both
+  non-English masters stay `TODO [VERIFY native speaker]` and the report says so.
+- The Tamil time construction is deliberately the regular
+  "`{hour}` மணி `{minutes}` நிமிடம்" form rather than the colloquial
+  contractions, because a contraction that is wrong is worse than one that is
+  merely formal. A native speaker should decide whether to contract it.
+- `params/soil_texture_classes.yaml` centroids and the class-typical bulk
+  densities both need checking against printed sources.
