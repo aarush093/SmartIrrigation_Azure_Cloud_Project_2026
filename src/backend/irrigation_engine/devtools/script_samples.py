@@ -43,7 +43,7 @@ __all__ = ["build_samples", "main", "write_samples"]
 
 # Crop and farmer names as each language would actually say them.
 CROPS = {"en": "wheat", "hi": "गेहूँ", "ta": "கோதுமை"}
-NAMES = {"en": "Ram", "hi": "राम काका", "ta": "முருகன்"}
+NAMES = {"en": "Ram", "hi": "राम", "ta": "முருகன்"}
 
 TODAY = dt.date(2026, 9, 4)
 

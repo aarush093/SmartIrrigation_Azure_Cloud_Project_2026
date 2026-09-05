@@ -149,7 +149,7 @@ PILOT_FARMERS = (
     ),
     DemoFarmer(
         farmer_id="farmer-beed-01",
-        name="Ram Kaka",
+        name="राम",
         village="Beed, Maharashtra",
         phone="+919000000002",
         language="hi",

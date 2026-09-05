@@ -153,7 +153,7 @@ ALL_STATES = [
 ]
 
 CROPS = {"en": "wheat", "hi": "गेहूँ", "ta": "கோதுமை"}
-NAMES = {"en": "Ram", "hi": "राम काका", "ta": "ராம்"}
+NAMES = {"en": "Ram", "hi": "राम", "ta": "முருகன்"}
 
 
 class TestNoTechnicalUnitsLeak:
@@ -571,6 +571,42 @@ class TestAcknowledgement:
         assert ack in text
         assert reason in text
         assert text.index(ack) < text.index(reason)
+
+
+class TestHonorific:
+    """The address term is per language, never hardcoded."""
+
+    def test_each_master_declares_its_own_honorific(self) -> None:
+        for lang in supported_languages():
+            assert "honorific" in load_script(lang)
+
+    @pytest.mark.parametrize("lang", supported_languages())
+    def test_no_other_languages_honorific_appears(self, lang: str) -> None:
+        """Marathi "kaka" in a Tamil script would be simply wrong.
+
+        The term was hardcoded until 5 September 2026, so every farmer was
+        addressed as a Marathi speaker regardless of where he farmed. This test
+        makes that impossible to reintroduce.
+        """
+        text = speak_schedule(schedule(), lang=lang, crop=CROPS[lang], farmer_name=NAMES[lang])
+        for other in supported_languages():
+            if other == lang:
+                continue
+            foreign = str(load_script(other)["honorific"]).strip()
+            if foreign:
+                assert foreign not in text, (
+                    f"{lang} script contains the {other} honorific {foreign!r}"
+                )
+
+    def test_the_honorific_follows_the_name(self) -> None:
+        text = speak_schedule(schedule(), lang="hi", crop=CROPS["hi"], farmer_name="राम")
+        honorific = str(load_script("hi")["honorific"]).strip()
+        assert text.index("राम") < text.index(honorific)
+
+    def test_an_empty_honorific_leaves_no_gap(self) -> None:
+        """English has none, and must not render a double space."""
+        text = speak_schedule(schedule(), lang="en", crop="wheat", farmer_name="Ram")
+        assert text.startswith("Ram, hello.")
 
 
 class TestLanguages:

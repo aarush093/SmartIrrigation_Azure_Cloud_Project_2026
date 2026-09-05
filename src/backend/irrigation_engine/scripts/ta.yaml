@@ -14,7 +14,14 @@ name: தமிழ்
 # TODO [VERIFY] confirm the Azure AI Speech voice name at build time.
 voice: ta-IN-PallaviNeural
 
-greeting: "{name}, வணக்கம்."
+# Address term appended to the farmer's name. "Anna" is the respectful
+# term for an older man in Tamil and is the ordinary way an extension
+# worker would address a farmer. Marathi "kaka" would be simply wrong
+# here, which is why this is per-language rather than hardcoded.
+# TODO [VERIFY native speaker] whether "anna", "aiya" or "saar" fits the
+# Vellore pilot best.
+honorific: " அண்ணா"
+greeting: "{name}{honorific}, வணக்கம்."
 greeting_no_name: "வணக்கம்."
 
 acknowledge:

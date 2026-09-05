@@ -44,7 +44,7 @@ from irrigation_engine.scripts_render import (
 
 # Values the renderer injects that are not in the master.
 CROPS = {"en": "wheat", "hi": "गेहूँ", "ta": "கோதுமை"}
-NAMES = {"en": "Ram", "hi": "राम काका", "ta": "முருகன்"}
+NAMES = {"en": "Ram", "hi": "राम", "ta": "முருகன்"}
 
 PLACEHOLDER = re.compile(r"\{[a-z_]+\}")
 
