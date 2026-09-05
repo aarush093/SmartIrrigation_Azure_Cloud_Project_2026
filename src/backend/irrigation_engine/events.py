@@ -76,6 +76,13 @@ class StateChange:
     #: Net depth to credit to the water balance, mm. Non-zero only for
     #: WATER_GIVEN and KEYPRESS_YES, and always the depth that was *planned*,
     #: never a depth the farmer estimated.
+    #:
+    #: Specifically ``Schedule.delivered_mm``, the depth the run could deliver
+    #: inside the window, NOT ``required_mm``. A truncated run leaves the
+    #: undelivered part in the depletion, which is exactly where the next day's
+    #: requirement reads it from. Crediting the full requirement here would
+    #: under-count the depletion and make carry-over look like a quantity the
+    #: balance needs, which is the double count removed on 5 September 2026.
     credit_mm: float = 0.0
     #: Whether the feeder's reliability should be lowered for the window.
     lower_reliability: bool = False
@@ -251,9 +258,11 @@ class MissedCallRouter:
             occurred_at: When it arrived, timezone-aware.
             known_farmers: Phone number to farmer id. Identity is the phone
                 number, verified by the missed call itself; there is no login.
-            planned_depth_mm: Depth today's schedule asked for. Credited on a
+            planned_depth_mm: ``Schedule.delivered_mm`` for today, the depth
+                the scheduled run could deliver inside the window. Credited on a
                 WATER_GIVEN, because the planned depth is what was almost
                 certainly applied and the farmer cannot estimate millimetres.
+                Never ``required_mm``: see :attr:`StateChange.credit_mm`.
 
         Returns:
             The state change to apply, or a non-accepted outcome explaining why
@@ -324,7 +333,7 @@ class MissedCallRouter:
             digit: ``"1"`` for yes, ``"2"`` for no.
             occurred_at: When the keypress arrived, timezone-aware.
             known_farmers: Phone number to farmer id.
-            planned_depth_mm: Depth today's schedule asked for.
+            planned_depth_mm: ``Schedule.delivered_mm`` for today, as above.
 
         Returns:
             The state change, treating a yes exactly as a WATER_GIVEN missed call

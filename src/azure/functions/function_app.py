@@ -42,6 +42,7 @@ from irrigation_engine.events import (
     MissedCallRouter,
     NumberMode,
     deduplication_key,
+    operational_date,
 )
 from irrigation_engine.scheduler.models import IST
 
@@ -96,6 +97,42 @@ def _router() -> MissedCallRouter:
             log=EventLog(),
         )
     return MissedCallRouter(number_water_given=number_a, mode=NumberMode.SINGLE, log=EventLog())
+
+
+def _planned_depth_mm(store: Store, farmer_id: str | None, at: dt.datetime) -> float:
+    """Net depth today's schedule expected the farmer to apply, mm.
+
+    This is what a ``WATER_GIVEN`` missed call credits to the water balance, and
+    it is deliberately ``delivered_mm`` rather than ``required_mm``: a run
+    truncated by the window length delivers only what fits, and the remainder
+    must stay in the depletion so that tomorrow's requirement still contains it.
+
+    Keyed on the operational date, not the calendar date, so a farmer confirming
+    a 22:00-to-06:00 night run at 00:30 is credited against the schedule that run
+    belongs to.
+
+    Args:
+        store: Persistence.
+        farmer_id: The farmer, or None if the caller is unknown.
+        at: When the call arrived, timezone-aware.
+
+    Returns:
+        Summed delivered depth across the farmer's fields, mm. Zero when the
+        farmer is unknown or no schedule was written for the operational day,
+        which credits nothing rather than guessing.
+    """
+    if farmer_id is None:
+        return 0.0
+    day = operational_date(at)
+    total = 0.0
+    for field in store.fields_for(farmer_id):
+        field_id = field.get("field_id")
+        if not isinstance(field_id, str):
+            continue
+        schedule = store.schedule_for(field_id, day)
+        if schedule is not None:
+            total += float(schedule.get("delivered_mm", 0.0))
+    return total
 
 
 @app.timer_trigger(schedule="0 0 * * * *", arg_name="timer", run_on_startup=False, use_monitor=True)
@@ -222,7 +259,9 @@ def acs_events(req: func.HttpRequest) -> func.HttpResponse:
             number_called=payload.number_called,
             occurred_at=payload.received_at,
             known_farmers=known,
-            planned_depth_mm=0.0,
+            planned_depth_mm=_planned_depth_mm(
+                store, known.get(payload.caller), payload.received_at
+            ),
         )
 
         # The in-process router check is cheap and avoids a round trip, but the
