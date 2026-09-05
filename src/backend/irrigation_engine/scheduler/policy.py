@@ -121,8 +121,9 @@ def plan_day(
     """Decide what this field should do today.
 
     Args:
-        state: Current field state, including any carry-over owed from a
-            truncated run in an earlier window.
+        state: Current field state. Its depletion already accounts for any
+            truncated earlier run, because the balance is stepped with the depth
+            delivered; see the note on ``required`` below.
         today: Local calendar date the decision applies to. An argument, never a
             clock read, so the decision is reproducible.
         windows: Upcoming power windows in chronological order. The first is W1,
@@ -150,9 +151,20 @@ def plan_day(
     min_application_mm = float(load_params("irrigation")["scheduling"]["min_application_mm"])
     low_threshold = float(scheduling["reliability"]["low_threshold"])
 
-    # The deficit to repay is the current depletion plus anything a truncated
-    # earlier run still owes this field.
-    required = state.depletion_mm + state.carry_over_mm
+    # The deficit to repay is the current depletion, and nothing else.
+    #
+    # Carry-over is deliberately NOT added. It is what a truncated run failed to
+    # deliver, and the water balance is stepped with the depth actually
+    # delivered, so the undelivered part is already inside today's depletion.
+    # Adding it again asks the pump for it twice, and because the root zone
+    # cannot hold the surplus, almost all of the excess drains straight past it.
+    # Measured on 5 September 2026: the double count was 1,467 mm of the
+    # simulation's water and 1,452 mm of its deep percolation.
+    #
+    # Carry-over is a thing the CALL SCRIPT says -- "the rest tomorrow" -- not an
+    # accounting quantity the balance needs. It is therefore an output on
+    # :class:`Schedule` and not an input on :class:`FieldState`.
+    required = state.depletion_mm
 
     def _no_window(reason: ReasonCode) -> Schedule:
         return Schedule(
