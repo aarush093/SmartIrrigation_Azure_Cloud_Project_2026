@@ -33,6 +33,19 @@ horizon:
   # How long before a window opens the daily call is placed. Plan Section 5.2.
   call_lead_minutes: 60
 
+# --- Rain skip ----------------------------------------------------------------
+# An irrigation is skipped only when the calibrated forecast both expects enough
+# rain to cover the deficit AND is trusted at this probability. The asymmetry is
+# deliberate: a wrongly skipped irrigation costs the crop a whole interval,
+# because the next window may be days away, while a needless one costs only
+# water.
+rain_skip:
+  # Measured on the two-season simulation, 5 September 2026: at 0.7 the rule
+  # fires seldom, so the skip saves little water. Lowering it saves more and
+  # risks more. The sensitivity across 0.5 to 0.8 is in results/README.md; the
+  # pilot should pick a point from that curve, not from this comment.
+  min_confidence: 0.7
+
 # --- Multi-field allocation ---------------------------------------------------
 # Fields sharing one pump compete for the same window. Priority is
 # (D / RAW) * Ky: how far into stress the field is, weighted by how much yield
