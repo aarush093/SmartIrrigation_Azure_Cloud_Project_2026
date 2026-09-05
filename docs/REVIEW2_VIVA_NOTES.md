@@ -164,21 +164,26 @@ The real baseline is **P1: a correct agronomic instruction the farmer can only
 execute when the power arrives.** That is exactly what a farmer using any
 existing advisory app experiences today.
 
-Five policies, nine fields, three districts, two seasons — 18 field-seasons each:
+Five policies, two seasons. Nine fields were simulated; the headline is the
+**six non-ponded** ones. Rice is excluded because `params/crops.yaml` already
+states a depletion-triggered balance is the wrong model for ponded paddy — say
+this before you are asked, and have the all-nine figure ready.
 
 | Policy | Water (mm) | Stress days | Percolation (mm) |
 |---|---:|---:|---:|
-| P0 calendar | 7,776 | 1,001 | 8,998 |
-| **P1 advisory, power constrained** | **6,141** | **846** | **5,547** |
-| P2 power-window scheduler | 8,961 | 312 | 7,685 |
-| P3 scheduler + rain skip | 8,852 | 320 | 7,593 |
-| *Pref unlimited power (unachievable)* | *6,920* | *277* | *5,829* |
+| P0 calendar | 6,362 | 631 | 7,605 |
+| **P1 advisory, power constrained** | **4,435** | **576** | **4,212** |
+| P2 power-window scheduler | 5,873 | 95 | 4,992 |
+| P3 scheduler + rain skip | 5,740 | 96 | 4,859 |
+| *Pref unlimited power (unachievable)* | *5,048* | *116* | *4,431* |
 
 **Objective 6 as written is not met.** It asks for 20% less water than
-fixed-interval; P3 applies **13.8% more**. Reported as measured.
+fixed-interval; P3 applies **9.8% less** — right direction, short of the
+threshold. Reported as measured. All nine fields: 6.6% less.
 
 **The novelty claim, P3 against P1 under an identical power constraint:
-62.2% fewer stress days at 44.2% higher water use.**
+83.3% fewer stress days at 29.4% higher water use.** All nine: 57.3% fewer
+stress days at 18.3% higher water use. Both sets support the same conclusion.
 
 The scheduler buys reliability with water, and the mechanism is visible in the
 policy: it cannot rely on the next window arriving, so it refills early. That
@@ -187,9 +192,44 @@ of the rain that follows drains below it.
 
 **The number no one else can produce:** P3 against Pref isolates the constraint
 itself, since the two differ only in whether power is available on demand.
-**28% more water and 43 more stress days.** That is the measured price a
-smallholder pays for a rationed feeder, and it is available only because this
-system models the window explicitly.
+**13.7% more water.** That is the measured price a smallholder pays for a
+rationed feeder, and it is available only because this system models the window
+explicitly. P3 reaches *fewer* stress days than Pref, 96 against 116, which is
+not a paradox: Pref waits for depletion to reach RAW, while P3's capacity-limit
+branch refills before the deficit outgrows one window. Pref bounds what
+unlimited power buys, not what perfect agronomy would.
+
+### If you are asked whether the numbers changed
+
+They did, once, and you should say so plainly rather than be caught by the git
+history. The first run reported P3 applying 13.8% **more** water than
+fixed-interval. That was a **carry-over double count in the scheduler**:
+`plan_day` asked for `depletion + carry_over`, while the water balance was
+stepped with the depth actually delivered, so the shortfall of a truncated run
+was inside the depletion *and* added on top of it the next morning.
+
+It was caught by a physical inconsistency, not by a test: the constrained policy
+was applying 2,041 mm more water than the *unconstrained* one, with 91% of the
+excess draining below the root zone. A policy cannot apply more than the ideal
+unless it is over-filling.
+
+What to say: the defect was in the engine as well as the simulation, so a real
+farmer would have been told to over-irrigate the morning after every truncated
+run; it is fixed, it has a regression test that fails against the old code, the
+before-and-after measurement is in `results/README.md`, and the superseded
+figures are retained in the build log rather than deleted.
+
+**Do not present this as a near miss.** Present it as the reason the result is
+now trustworthy: a number that survives a physical sanity check is worth more
+than one that was never checked.
+
+### If you are asked about the rain skip
+
+It barely matters, and the sensitivity table says so. Across confidence
+thresholds 0.5 to 0.8 the water applied moves 87 mm out of 5,750 — under 2% —
+while the skips issued nearly triple. The power-window scheduling accounts for
+1,305 mm against the same baseline. **The value is in the scheduling, not the
+skip.** Volunteering this is stronger than defending a threshold.
 
 ---
 

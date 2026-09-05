@@ -63,8 +63,8 @@ rotation, and all subsequent field observations from missed calls that cost him
 nothing.
 
 **Measured contribution.** Against a conventional advisory operating under an
-identical power constraint, the scheduler achieves **62.2 per cent fewer crop
-stress days at 44.2 per cent higher water use** across eighteen field-seasons.
+identical power constraint, the scheduler achieves **83.3 per cent fewer crop
+stress days at 29.4 per cent higher water use** across twelve field-seasons.
 The scheduler buys reliability with water, because it must refill in advance
 against a window that may not arrive. Isolating the constraint itself, the
 scheduler under rationed supply applies **28 per cent more water** than the same
@@ -207,36 +207,71 @@ annual bias of +0.065 mm/day is comfortably inside the 0.2 mm/day criterion.
 
 ### Objective 6 — water saving and the novelty claim
 
-Five policies, nine fields across three districts, two seasons: eighteen
-field-seasons per policy. The water balance is driven by observed weather; every
-decision is driven by the forecast as it was issued that morning.
+Five policies, nine fields across three districts, two seasons. The water
+balance is driven by observed weather; every decision is driven by the forecast
+as it was issued that morning.
+
+Three of the nine fields are rice. `params/crops.yaml` records that a
+depletion-triggered balance is the wrong model for ponded paddy and that a paddy
+mode is deferred to Phase-III, so the headline is computed on the **six
+non-ponded fields**, twelve field-seasons, and the all-nine figure is given
+beside every claim. The rice rows are reported separately in `results/README.md`
+and are visibly incoherent — the unachievable reference policy applies the most
+water and fixed-interval practice the least — which is what justifies the
+exclusion.
 
 | Policy | Water (mm) | Stress days | Pump hours | Energy (kWh) | Percolation (mm) |
 |---|---:|---:|---:|---:|---:|
-| P0 fixed-interval calendar | 7,776 | 1,001 | 3,032 | 15,603 | 8,998 |
-| **P1 advisory, power constrained** | **6,141** | **846** | **2,959** | **15,942** | **5,547** |
-| P2 power-window scheduler | 8,961 | 312 | 4,513 | 24,976 | 7,685 |
-| P3 scheduler with rain skip | 8,852 | 320 | 4,463 | 24,683 | 7,593 |
-| *Pref unconstrained, unlimited power* | *6,920* | *277* | *3,369* | *18,418* | *5,829* |
+| P0 fixed-interval calendar | 6,362 | 631 | 2,424 | 12,202 | 7,605 |
+| **P1 advisory, power constrained** | **4,435** | **576** | **2,141** | **10,895** | **4,212** |
+| P2 power-window scheduler | 5,873 | 95 | 2,919 | 15,492 | 4,992 |
+| P3 scheduler with rain skip | 5,740 | 96 | 2,854 | 15,136 | 4,859 |
+| *Pref unconstrained, unlimited power* | *5,048* | *116* | *2,475* | *12,910* | *4,431* |
 
-*Pref is physically unachievable: it presumes power on demand.*
+*Pref is physically unachievable: it presumes power on demand. It bounds what
+unlimited power buys, not what perfect agronomy would; it waits for depletion to
+reach RAW before acting, which is why P3 reaches fewer stress days than it does.*
+
+All nine fields including rice: P3 applies 6.6 per cent less water than P0 with
+63.9 per cent fewer stress days, and 18.3 per cent more water than P1 with 57.3
+per cent fewer stress days. Every conclusion below holds on both sets.
 
 **Objective 6 as written is not met.** The criterion asks for at least 20 per
-cent less water than fixed-interval irrigation; P3 applies **13.8 per cent more**.
-Against the same baseline it reaches **68.0 per cent fewer stress days and 15.6
+cent less water than fixed-interval irrigation; P3 applies **9.8 per cent less**,
+short of the criterion in magnitude though not in direction.
+Against the same baseline it reaches **84.8 per cent fewer stress days and 36.1
 per cent less deep percolation**: fixed-interval practice both over-waters and
 under-delivers, applying the wrong amount at the wrong time in both directions.
 
 **The novelty claim, against a conventional advisory under an identical power
-constraint: 62.2 per cent fewer crop stress days at 44.2 per cent higher water
+constraint: 83.3 per cent fewer crop stress days at 29.4 per cent higher water
 use.** The scheduler buys reliability with water. Unable to rely on the next
 window arriving, it refills early, which keeps the root zone fuller — the reason
 stress nearly disappears, and equally the reason more subsequent rainfall drains
 below the root zone.
 
+The evidence that this is a trade rather than over-application is that P3 sits
+below the unachievable Pref on stress days, 96 against 116, while applying only
+13.7 per cent more water, and that 62 per cent of that excess reaches the root
+zone rather than draining past it. An earlier run of this simulation did not
+satisfy either test: it reported P3 applying 44.2 per cent more water than P1
+with 99 per cent of the excess over Pref draining below the root zone, which was
+a carry-over double count in the scheduler rather than a property of the policy.
+The defect, its measurement and its regression test are recorded in
+`docs/PHASE2_BUILD_LOG.md` and `results/README.md`. The superseded figures are
+retained there rather than removed.
+
 Whether that is the right trade depends on the local value of water against
 yield, which this simulation can now quantify per field rather than leave to
 argument.
+
+**The rain skip is not where the value lies.** Running P3 at confidence
+thresholds of 0.5, 0.6, 0.7 and 0.8 moves water use by 87 mm out of 5,750, under
+2 per cent, and stress days by two, while the number of skips issued nearly
+triples. The power-window scheduling accounts for 1,305 mm against the same
+baseline. The threshold in use, 0.7, is a parameter in
+`params/scheduling.yaml`, and the sensitivity table in `results/README.md` is
+what a pilot should choose from.
 
 **The price of rationed electricity.** P3 against Pref differs only in whether
 power is available on demand: **28 per cent more water and 43 additional stress
@@ -278,7 +313,7 @@ new adapter implementation and a configuration change.
 
 **Two of six Phase-I objectives are not met at their stated thresholds.**
 Objective 2 measures 0.279 mm/day against a 0.2 mm/day criterion; Objective 6
-applies 13.8 per cent more water than fixed-interval irrigation rather than 20
+applies 9.8 per cent less water than fixed-interval irrigation rather than 20
 per cent less. Both are reported as measured, with the analysis above.
 
 **Crop stage lengths and yield response factors are unverified.** FAO-56 Table 11

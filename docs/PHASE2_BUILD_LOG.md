@@ -1089,12 +1089,17 @@ deployed, no Azure credit spent.
 1. **Objective 2 is not met**, at 0.279 mm/day against 0.2. The implementation is
    verified correct, and the residual is smaller than the 0.735 mm/day
    disagreement between two reanalysis products fed to that same implementation.
-2. **Objective 6 is not met** on water: P3 applies 13.8 percent more than
-   fixed-interval, not 20 percent less. It reaches 68.0 percent fewer stress days
-   on the same comparison.
+2. **Objective 6 is not met** on water: P3 applies 9.8 percent less than
+   fixed-interval, against a 20 percent criterion. The direction is right and the
+   magnitude is not. It reaches 84.8 percent fewer stress days on the same
+   comparison, so the second half of the criterion is met with a wide margin.
+   *(Superseded figures: an earlier run reported 13.8 percent more water and 68.0
+   percent fewer stress days. See the entry of 5 September 2026 on the carry-over
+   double count.)*
 3. **The novelty claim holds on its own terms**: against a conventional advisory
-   under an identical power constraint, 62.2 percent fewer stress days at 44.2
+   under an identical power constraint, 83.3 percent fewer stress days at 29.4
    percent higher water use. The scheduler buys reliability with water.
+   *(Superseded: 62.2 percent and 44.2 percent, from the same uncorrected run.)*
 
 ### Every deviation from the brief, across all milestones
 
@@ -1180,3 +1185,202 @@ Grouped by who can close them.
 - Both teammates' code is prepared but must be committed by them.
 - No Azure resource is deployed; no runtime, cost or latency figure exists.
 - No live phone call has ever been placed, and none can be on this subscription.
+
+---
+
+## 2026-09-05 (second entry) — the carry-over double count
+
+Phase-II was reported as closed earlier today. It was not. The Objective 6 table
+contained a result that could not be right, and the framing built on it — "the
+scheduler buys reliability with water" — was resting on a defect.
+
+1,280 tests, `ruff`, `ruff format` and `mypy --strict` clean across 56 source
+files.
+
+### What was wrong with the table
+
+P2 applied **2,041 mm more water than Pref**, the physically unachievable policy
+with power on demand, with **1,856 mm more deep percolation** and **35 more
+stress days**. Ninety-one percent of the excess water drained straight past the
+root zone.
+
+Nothing should apply more water than the unconstrained policy unless it is
+over-filling the root zone. A policy that applies more than the ideal, wastes
+almost all of the excess, and still stresses the crop more often is not making a
+trade. That signature was in the published table and nobody, including me, read
+it.
+
+### The defect
+
+`plan_day` computed
+
+    required = state.depletion_mm + state.carry_over_mm
+
+while the water balance was stepped with `applied = schedule.delivered_mm`. After
+a truncated run the undelivered depth is **already inside the depletion**, so
+adding carry-over on top asked the pump for the same water twice.
+
+Worked through: depletion 40 mm, window capacity 25 mm. Apply 25, carry-over 15.
+The balance steps to 40 − 25 + 5 mm ETc = 20 mm, and that 20 already contains the
+15 that was never delivered. The next morning the requirement became 20 + 15 = 35
+against a true deficit of 20, and 15 mm percolated. Every truncated run, all
+season.
+
+**This was in the engine, not only in the simulation.** A real farmer would have
+been told to over-irrigate the morning after every window that ran short. It
+would have reached the field.
+
+It is the same class as the phantom carry-over fixed on 5 September in the
+earlier entry. That fix addressed the branch where *nothing was applied*; the
+identical double count survived in the branch where something was. Fixing one
+instance of a class and not looking for the others is the actual lesson here.
+
+### Diagnostic, before the fix
+
+P2 run twice over identical data, nothing else changed:
+
+| P2 arm | Water (mm) | Percolation (mm) | Stress days | Pump hours |
+|---|---:|---:|---:|---:|
+| `required = depletion + carry_over` | 8,961 | 7,685 | 312 | 4,513 |
+| `required = depletion` | 7,493 | 6,233 | 341 | 3,704 |
+| *Pref, unlimited power (reference)* | *6,920* | *5,829* | *277* | *3,369* |
+
+The double count was **1,467 mm of water and 1,452 mm of deep percolation**. Of
+the water it added, 99 percent drained below the root zone, which is what the
+hypothesis predicted and is why the excess was almost pure waste rather than
+insurance.
+
+### What was changed
+
+**Engine.** `required = state.depletion_mm`. `FieldState.carry_over_mm` is
+**removed**, not merely ignored: an input that must always be zero is the same
+trap a second time. `Schedule.carry_over_mm` stays, because carry-over is a real
+thing — it is what the call script tells the farmer about tomorrow — but it is an
+output, not an accounting quantity the balance needs. Both docstrings now say so.
+
+**Event credit.** `StateChange.credit_mm` is documented as
+`Schedule.delivered_mm`, never `required_mm`, since that is the half of the loop
+that makes the depletion correct. The Functions handler was passing a hardcoded
+`0.0`, so a farmer's confirmation credited nothing at all; it now reads the
+stored schedule for the **operational** day, so a night run confirmed at 00:30 is
+credited against the right plan. Five tests in `tests/test_planned_depth.py`.
+
+**Simulation.** Requirement is depletion alone. A second defect fixed in the same
+loop: when the forecast was unavailable the policy branch did `day += 1;
+continue`, skipping the balance step entirely, so that day's ETc and rain never
+reached the depletion. It now falls through to the balance step with no
+irrigation, and `run_policy` asserts that every simulated day steps the balance
+exactly once under every policy.
+
+**A standing check, so this cannot recur silently.** `_sanity_check` warns on
+every run when a constrained policy applies materially more water than Pref with
+more than 75 percent of the excess draining below the root zone. That is the
+signature that was sitting in the published table.
+
+**Regression test.** `tests/scheduler/test_truncated_run_accounting.py`, ten
+tests, drives a real `WaterBalance` rather than a stub, because the scheduler in
+isolation was self-consistent and the balance in isolation was correct against
+FAO-56 equation 85. Only stepping one into the other exposes the double count.
+Verified to fail against the old requirement, at three of five truncation
+degrees.
+
+### Rice is out of the headline
+
+Three of the nine simulated fields are rice, including the largest.
+`params/crops.yaml` already records that a depletion-triggered balance is the
+wrong model for ponded paddy and that a paddy mode is a Phase-III item, so the
+headline now uses the **six non-ponded fields** and the all-nine figure is
+printed beside every claim.
+
+The rice rows are the argument for their own exclusion: the unachievable Pref
+applies the *most* water of any policy on rice, and fixed-interval practice the
+least. No irrigation model should produce that ranking. Rice takes p = 0.20, so
+RAW is small and the trigger fires almost continuously.
+
+### Corrected results, six non-ponded fields, two seasons
+
+| Policy | Water (mm) | Stress days | Pump hours | Energy (kWh) | Percolation (mm) |
+|---|---:|---:|---:|---:|---:|
+| P0 calendar | 6,362 | 631 | 2,424 | 12,202 | 7,605 |
+| **P1 advisory, power constrained** | **4,435** | **576** | **2,141** | **10,895** | **4,212** |
+| P2 power-window scheduler | 5,873 | 95 | 2,919 | 15,492 | 4,992 |
+| **P3 scheduler + rain skip** | **5,740** | **96** | **2,854** | **15,136** | **4,859** |
+| *Pref unlimited power* | *5,048* | *116* | *2,475* | *12,910* | *4,431* |
+
+### Before and after, on the claims that were published
+
+| Claim | Reported this morning | Corrected |
+|---|---|---|
+| Objective 6, P3 vs P0, water | 13.8 percent **more** | **9.8 percent less** |
+| Objective 6, P3 vs P0, stress days | 68.0 percent fewer | 84.8 percent fewer |
+| Novelty, P3 vs P1, water | 44.2 percent more | 29.4 percent more |
+| Novelty, P3 vs P1, stress days | 62.2 percent fewer | 83.3 percent fewer |
+| Price of rationed power, P3 vs Pref | 28 percent more water, 43 more stress days | 13.7 percent more water, 20 **fewer** stress days |
+
+Objective 6 is **still not met**: 9.8 percent against a 20 percent criterion. The
+direction is now right and the magnitude is not, which is a different and more
+defensible position than a result that contradicted itself. The second half of
+the criterion, no increase in stress days, is met with a wide margin.
+
+The framing rule applied again on the corrected numbers puts the result in the
+same branch as before — P3 better than P1 on stress days, worse on water — so the
+headline wording stands, but it now stands on numbers that survive a physical
+sanity check. The evidence for that: P3 sits *below* the unachievable Pref on
+stress days, 96 against 116, at 13.7 percent more water, with 62 percent of the
+excess draining rather than 99 percent.
+
+**Pref needs restating.** It bounds what unlimited power buys, not what perfect
+agronomy would. It waits for depletion to reach RAW before acting, while P3's
+capacity-limit branch refills before the deficit outgrows one window, which is
+why P3 reaches fewer stress days than it does. Calling it "ideal" was loose.
+
+### The rain-skip threshold
+
+A single threshold is a single point, so all four were run. `rain_skip.
+min_confidence` is now a parameter in `scheduling.yaml`, and `RainForecast` takes
+it, which is what made the sweep possible.
+
+| Threshold | Water (mm) | Stress days | Skips issued | Percolation (mm) |
+|---:|---:|---:|---:|---:|
+| 0.5 | 5,745 | 98 | 316 | 4,864 |
+| 0.6 | 5,745 | 98 | 261 | 4,864 |
+| **0.7 (deployed)** | **5,740** | **96** | **242** | **4,859** |
+| 0.8 | 5,827 | 96 | 113 | 4,946 |
+
+Nearly tripling the skips issued changes water use by 87 mm out of 5,750, under 2
+percent. The power-window scheduling accounts for 1,305 mm against the same
+baseline. **The value is in the scheduling, not the skip**, and this is now
+evidence rather than assertion.
+
+Two features of that table are stated in `results/README.md` rather than left for
+a reviewer to find. 0.5 and 0.6 give identical water despite 55 more skips,
+because the rain check runs before the need check in `plan_day`, so a skip is
+issued whenever rain covers a deficit including deficits too small to act on —
+**the skip count overstates avoided irrigations**. And 0.8 uses *more* water than
+0.7, which is the rule working: a higher bar refuses more skips.
+
+No threshold was chosen to improve the headline. 0.7 stays, on the asymmetry
+argument, and a pilot with a measured local cost of water should pick its own
+point from the curve.
+
+### Everything updated
+
+`results/objective6_policy_comparison.csv` (now carrying `ponded` and
+`rain_skips` columns), `results/objective6_skip_threshold_sensitivity.csv` (new),
+all three figures including `objective6_skip_threshold.png` (new),
+`results/README.md`, the README acceptance table, `docs/PHASE2_REPORT.md`,
+`docs/REVIEW2_VIVA_NOTES.md` and the closing entry above. Superseded figures are
+marked superseded in place rather than deleted.
+
+The viva notes gained a section on what to say if the change in numbers is
+raised. The answer is that a number surviving a physical sanity check is worth
+more than one that was never checked, and that the check is now automatic.
+
+### Carried forward
+
+- The Vellore monsoon ET₀ bias of +0.413 is still unexplained.
+- A ponded-paddy mode remains a Phase-III item, and until it exists no claim in
+  this project covers rice.
+- The pre-existing lint findings in `handoff/student3_ai_model/` are Krishna
+  Agrawal's to clear when he commits the package; `handoff/` is gitignored and
+  outside CI.

@@ -71,7 +71,7 @@ Hindi and Tamil interface labels, and the usability round.
 - `train_calibration.py` — the calibrated rain probability the skip rule needs,
   with monotone constraints specified and Brier score against the raw forecast
   as the acceptance criterion.
-- `simulate_policies.py` — **Objective 6**, the four-policy comparison from plan
+- `simulate_policies.py` — **Objective 6**, the five-policy comparison from plan
   Section 12. **This one is written, not scaffolded**, and imports the engine
   rather than reimplementing the water balance.
 
