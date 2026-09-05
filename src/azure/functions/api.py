@@ -11,12 +11,24 @@ voice and missed calls; he never touches an HTTP endpoint.
 from __future__ import annotations
 
 import datetime as dt
+import hashlib
+import os
 from typing import Any
 
 from fastapi import FastAPI
 from pydantic import BaseModel, Field
 
+from adapters.cosmos_store import CosmosStore, InMemoryStore, Store
 from irrigation_engine.scheduler.models import IST
+
+
+def _store() -> Store:
+    """The repository, or an in-memory stand-in when Cosmos is not configured."""
+    endpoint = os.environ.get("COSMOS_ENDPOINT", "")
+    if not endpoint:
+        return InMemoryStore()
+    return CosmosStore(endpoint=endpoint, database=os.environ.get("COSMOS_DATABASE", "irrigation"))
+
 
 app = FastAPI(
     title="Smart Irrigation advisory",
@@ -54,6 +66,10 @@ class OnboardRequest(BaseModel):
     )
     bucket_seconds: float | None = Field(default=None, gt=0.0)
     consent_given: bool = Field(default=False, description="Spoken consent for the daily call.")
+    soil_texture: str = Field(
+        default="",
+        description="sandy, loamy or clayey. The PRIMARY soil input; SoilGrids only prefills it.",
+    )
 
 
 class OnboardResponse(BaseModel):
@@ -123,8 +139,17 @@ def onboard(request: OnboardRequest) -> OnboardResponse:
     if not request.consent_given:
         warnings.append("Spoken consent for the daily call was not recorded.")
 
-    # Persistence lands with the Cosmos bindings in M5.
-    farmer_id = f"farmer-{abs(hash(request.phone)) % 10**6:06d}"
+    if not request.soil_texture:
+        warnings.append(
+            "No soil texture recorded. The farmer's own answer is the primary "
+            "soil input and a fallback loam will be used until it is supplied."
+        )
+
+    # Deterministic id from the phone number, which is the identity. Python's
+    # hash() is salted per process and would give a different id on every
+    # restart, so it must not be used here.
+    digest = hashlib.sha256(request.phone.encode()).hexdigest()[:10]
+    farmer_id = f"farmer-{digest}"
     return OnboardResponse(
         farmer_id=farmer_id,
         field_id=f"{farmer_id}-f1",
@@ -143,6 +168,9 @@ def today(field_id: str) -> TodayResponse | None:
     Returns:
         The day's schedule, or None where none has been computed yet.
     """
-    del field_id
-    # Cosmos read lands in M5.
-    return None
+    record = _store().schedule_for(field_id, dt.datetime.now(tz=IST).date())
+    if record is None:
+        # No schedule yet is a normal state on the day a field is registered,
+        # not an error. The PWA shows its cached tiles rather than a failure.
+        return None
+    return TodayResponse.model_validate(record)
