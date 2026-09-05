@@ -1384,3 +1384,87 @@ more than one that was never checked, and that the check is now automatic.
 - The pre-existing lint findings in `handoff/student3_ai_model/` are Krishna
   Agrawal's to clear when he commits the package; `handoff/` is gitignored and
   outside CI.
+
+---
+
+## 2026-09-05 (third entry) — deployment abandoned, and a recipe that never ran
+
+Two findings, one of which explains the other.
+
+### Azure for Students is not available to this project
+
+The deployment was attempted properly, not skipped. Azure CLI 2.90.0 and Bicep
+0.46.1 were installed on the build machine and `az login` was run. It
+authenticated and then returned `No subscriptions found`.
+
+**Azure for Students is disabled in VIT's managed tenant and self-signup is not
+permitted.** There is no subscription to deploy into, and no way to obtain one
+from inside the institution's tenant. The blocker is an institutional policy: not
+technical, since the template compiles and targets a resource group rather than a
+subscription, and not budgetary, since every resource is on a free or consumption
+tier.
+
+**Phase-II therefore ships the infrastructure as a compiled, validated
+deliverable and stops there.** Verified today with Bicep CLI v0.46.1:
+
+- `src/azure/infra/main.bicep` compiles to **25 resource declarations**
+- **5 alert rules**, generated from a `copy` loop over the `alerts` variable:
+  `ingest-failure`, `scheduler-failure`, `call-failure-rate`,
+  `missedcall-webhook-errors`, `cosmos-throttling`
+- `make deploy-plan` and `make deploy` are both ready and correct
+- **Nothing is deployed. No Azure credit has been spent, at any point in
+  Phase-II.**
+
+What this costs the project is worth stating rather than glossing. Every claim
+about *what the template declares* is verified by compilation. Every claim about
+*runtime* — monthly cost, latency, whether an alert actually fires, and the
+30-day ingestion availability figure Objective 1 asks for — is not, and stays
+`TODO [VERIFY]` rather than being estimated. The cost TODO in
+`docs/AZURE_SERVICES_PHASE2.md` is now marked as unclosable in Phase-II, so it
+does not read as merely undone.
+
+### The deploy recipes had never been runnable
+
+Found while preparing to run `make deploy-plan`. Both recipes carried literal
+backslash-n sequences where line continuations were intended:
+
+    az deployment group what-if \n\t\t--resource-group ... \n\t\t--template-file ...
+
+The shell sees an escaped `n`, which collapses to a bare `n`, so the command
+would have been `az deployment group what-if n --resource-group ...`. Neither
+`deploy-plan` nor `deploy` could ever have worked.
+
+**Why it survived until now: `make` is not installed on this machine.** Every
+target in this Makefile has been exercised by calling the underlying command
+directly, so the recipes themselves were never parsed. A Makefile whose recipes
+are never run is documentation that looks like automation, and the two failed
+differently here — the documentation was right and the automation was broken.
+
+Both recipes are now single lines, matching the other multi-argument recipes in
+the file, and verified with `make -n` after installing GNU Make 4.4.1. The
+`AZURE_RESOURCE_GROUP` guard now names an example value, because that error
+message is the only place the variable is documented.
+
+The same defect class was fixed once before, in the `sim` recipe on
+3 September. Fixing one instance and not sweeping the file for the rest is the
+same mistake as the carry-over double count earlier today, in a different file.
+`Makefile` now contains exactly one literal backslash-n, inside an `awk` format
+string where it belongs, and that was checked rather than assumed.
+
+### Also in this pass
+
+`results/script_samples.html` and `make script-html`. A terminal cannot be
+trusted with Devanagari or Tamil, so the native-speaker review that both
+non-English masters are blocked on now has a page that renders correctly on a
+phone: one card per schedule case, the English gloss above its Hindi and Tamil so
+the reviewer can see the intent before judging the wording, explicit font stacks
+and extra leading for the combining marks, and no external requests so it opens
+with no data connection. Verified in a browser rather than asserted.
+
+### Carried forward
+
+- Objective 1's availability criterion cannot be measured without a deployment
+  and is not claimed.
+- Both non-English masters remain `TODO [VERIFY native speaker]`.
+- `make` should be treated as a required tool for this repository; the README's
+  How to Run section assumes it and the build machine did not have it.
