@@ -64,7 +64,6 @@ def field_states(draw: st.DrawFn) -> FieldState:
         irrigation_efficiency=draw(efficiencies),
         discharge_l_per_min=draw(discharges),
         yield_response_factor=draw(st.floats(min_value=0.2, max_value=1.5)),
-        carry_over_mm=draw(st.floats(min_value=0.0, max_value=30.0)),
     )
 
 
@@ -247,7 +246,7 @@ class TestSchedulerProperties:
         minimum worthwhile application.
         """
         schedule = plan_day(state, today=TODAY, windows=[window], forecast_etc_mm=etc)
-        projected = min(state.depletion_mm + state.carry_over_mm + sum(etc), state.taw_mm)
+        projected = min(state.depletion_mm + sum(etc), state.taw_mm)
         if projected > state.raw_mm and schedule.decision is not Decision.IRRIGATE:
             assert schedule.reason_code in {
                 ReasonCode.RAIN_EXPECTED,

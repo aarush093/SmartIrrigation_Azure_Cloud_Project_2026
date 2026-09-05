@@ -218,6 +218,14 @@ class FieldState(_Model):
 
     Assembled by the caller from the water balance and the crop calendar, so that
     ``plan_day`` itself reads no state and touches no clock.
+
+    **There is deliberately no carry-over field here.** A truncated run's
+    undelivered depth is already inside ``depletion_mm``, because the balance is
+    stepped with the depth delivered rather than the depth asked for. This model
+    carried a ``carry_over_mm`` input until 5 September 2026; ``plan_day`` added
+    it to the depletion and so requested the same water twice. The field is gone
+    rather than merely ignored, because an input that must always be zero is the
+    same trap a second time.
     """
 
     field_id: str
@@ -228,9 +236,6 @@ class FieldState(_Model):
     irrigation_efficiency: float = Field(gt=0.0, le=1.0)
     discharge_l_per_min: float = Field(gt=0.0)
     yield_response_factor: float = Field(gt=0.0, description="Ky at the current stage.")
-    carry_over_mm: float = Field(
-        default=0.0, ge=0.0, description="Depth owed from a truncated run in an earlier window."
-    )
 
     @property
     def priority(self) -> float:
@@ -260,7 +265,11 @@ class Schedule(_Model):
     )
     delivered_mm: float = Field(default=0.0, ge=0.0, description="Net depth the run delivers.")
     carry_over_mm: float = Field(
-        default=0.0, ge=0.0, description="Net depth not delivered because the run was truncated."
+        default=0.0,
+        ge=0.0,
+        description="Net depth not delivered because the run was truncated. Reported to the "
+        "farmer as 'the rest tomorrow'; never fed back into the water balance or the next "
+        "day's requirement, which the depletion already carries.",
     )
     required_mm: float = Field(
         default=0.0, ge=0.0, description="Net depth the field actually needed."

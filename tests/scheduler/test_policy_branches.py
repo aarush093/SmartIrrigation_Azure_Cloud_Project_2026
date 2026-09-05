@@ -52,7 +52,6 @@ def field(
     discharge: float = 380.2,
     efficiency: float = 0.65,
     ky: float = 1.0,
-    carry_over: float = 0.0,
     field_id: str = "f1",
 ) -> FieldState:
     """The worked example field, with overrides."""
@@ -65,7 +64,6 @@ def field(
         irrigation_efficiency=efficiency,
         discharge_l_per_min=discharge,
         yield_response_factor=ky,
-        carry_over_mm=carry_over,
     )
 
 
@@ -225,11 +223,17 @@ class TestTruncationAndCarryOver:
         schedule = plan_day(state, today=TODAY, windows=[window(hours=4.0)], forecast_etc_mm=NORMAL)
         assert schedule.delivered_mm + schedule.carry_over_mm == pytest.approx(schedule.required_mm)
 
-    def test_carry_over_is_added_to_the_next_days_requirement(self) -> None:
-        """A debt from a truncated run is repaid, not forgotten."""
-        state = field(depletion=20.0, carry_over=15.0)
+    def test_the_requirement_is_the_depletion_and_nothing_else(self) -> None:
+        """Carry-over is never added on top; the depletion already contains it.
+
+        Regression test for the double count removed on 5 September 2026, which
+        cost the two-season simulation 1,467 mm of water and 1,452 mm of deep
+        percolation. See ``TestTruncatedRunAccounting`` for the invariant this
+        protects.
+        """
+        state = field(depletion=20.0)
         schedule = plan_day(state, today=TODAY, windows=[window()], forecast_etc_mm=NORMAL)
-        assert schedule.required_mm == pytest.approx(35.0)
+        assert schedule.required_mm == pytest.approx(20.0)
 
     def test_a_full_window_run_leaves_no_carry_over(self) -> None:
         state = field(depletion=25.0)
