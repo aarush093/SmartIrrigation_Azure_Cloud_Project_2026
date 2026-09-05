@@ -91,7 +91,7 @@ demo-offline:  ## Same as demo but with no network, for a room with bad wifi
 script-samples:  ## Write every rendered script to results/ for native-speaker review
 	$(PYTHON) -m irrigation_engine.devtools.script_samples
 
-sim:  ## Run the four-policy simulation study into results/
+sim:  ## Run the five-policy simulation study into results/
 	@# Prefers the teammate's committed copy under src/ai_model, falling back
 	@# to the handoff package so the simulation runs before he uploads it.
 	@if [ -f src/ai_model/simulate_policies.py ]; then SIM=src/ai_model/simulate_policies.py; else SIM=$(HANDOFF_AI)/simulate_policies.py; echo "note: src/ai_model not committed yet; running the handoff copy"; fi; $(PYTHON) $$SIM --out results/

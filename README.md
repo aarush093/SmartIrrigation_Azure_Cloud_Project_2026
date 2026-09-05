@@ -185,11 +185,14 @@ restated or quietly adjusted.
 | 3 | Soil-moisture model, R² ≥ 0.80 on a held-out season | Owned by Krishna Agrawal, in progress | Kept off the critical path behind the `MoistureForecaster` protocol, with a `KcEt0Forecaster` fallback that always works |
 | 4 | Daily decision, depth, justification and horizon delivered | Implemented | Voice call in three languages plus the icon-only PWA. Every schedule carries a reason code that maps to plain words. Live delivery is blocked by the phone-number restriction below |
 | 5 | Secure, observable Azure deployment, ≥ 5 alert rules | Implemented as code | Managed identity throughout, Cosmos local auth disabled, Key Vault RBAC, five alert rules in Bicep, gitleaks in CI. Authenticated gateways in place of private endpoints |
-| 6 | ≥ 20% less water than fixed-interval, no increase in stress days | **Not met on water** | P3 applies **13.8% more** water than fixed-interval, with **68.0% fewer stress days** and 15.6% less deep percolation. Against a conventional advisory under the same power constraint: **62.2% fewer stress days at 44.2% higher water use** |
+| 6 | ≥ 20% less water than fixed-interval, no increase in stress days | **Not met on water; met on stress days** | P3 applies **9.8% less** water than fixed-interval, short of the 20% criterion, with **84.8% fewer stress days** and 36.1% less deep percolation. Against a conventional advisory under the same power constraint: **83.3% fewer stress days at 29.4% higher water use**. Six non-ponded fields; rice is excluded from the headline because `crops.yaml` states a depletion balance is the wrong model for it |
 
 The Objective 6 result is the substantive finding, not a shortfall to apologise
 for: **the scheduler buys reliability with water**, because it must refill early
-against a window that may not arrive. Full analysis, including the measured
+against a window that may not arrive. An earlier run of this simulation reported
+P3 using *more* water than fixed-interval irrigation; that number was produced by
+a carry-over double count in the scheduler, which is fixed, tested and recorded
+in the build log. Full analysis, including the measured
 price of rationed electricity, is in [`results/README.md`](results/README.md).
 
 ---
