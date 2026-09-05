@@ -70,6 +70,8 @@ format:  ## Apply ruff's formatter and autofixes
 	$(BIN)/ruff format .
 
 sync-handoff:  ## Copy teammate handoff code into src/ for a local end-to-end run
+	@echo "These files belong to Nayan and Krishna. This copies them so the"
+	@echo "system runs end to end locally; they are NEVER committed from here."
 	@if [ -d "$(HANDOFF_FRONTEND)" ]; then \
 		mkdir -p src/frontend && cp -r $(HANDOFF_FRONTEND)/. src/frontend/ && \
 		echo "copied $(HANDOFF_FRONTEND) -> src/frontend"; \
@@ -90,7 +92,9 @@ script-samples:  ## Write every rendered script to results/ for native-speaker r
 	$(PYTHON) -m irrigation_engine.devtools.script_samples
 
 sim:  ## Run the four-policy simulation study into results/
-	$(PYTHON) src/ai_model/simulate_policies.py --out results/
+	@# Prefers the teammate's committed copy under src/ai_model, falling back
+	@# to the handoff package so the simulation runs before he uploads it.
+	@if [ -f src/ai_model/simulate_policies.py ]; then SIM=src/ai_model/simulate_policies.py; else SIM=$(HANDOFF_AI)/simulate_policies.py; echo "note: src/ai_model not committed yet; running the handoff copy"; fi; $(PYTHON) $$SIM --out results/
 
 func-start:  ## Run the Azure Functions host locally
 	cd src/azure/functions && func start
