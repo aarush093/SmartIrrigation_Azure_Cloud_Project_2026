@@ -16,6 +16,7 @@ import datetime as dt
 
 import pytest
 
+from irrigation_engine.params import load_params
 from irrigation_engine.scheduler import (
     IST,
     Decision,
@@ -142,6 +143,37 @@ class TestBranches:
         )
         assert schedule.decision is Decision.IRRIGATE
 
+    def test_the_skip_threshold_comes_from_the_parameter_file(self) -> None:
+        """0.7 is a parameter, not a constant buried in a default argument.
+
+        The sensitivity of the whole system to this one number is reported in
+        ``results/README.md``, which is only possible because it can be varied.
+        """
+        params = load_params("scheduling")["rain_skip"]
+        assert RainForecast().min_confidence == pytest.approx(params["min_confidence"])
+
+    def test_a_lower_threshold_admits_a_skip_the_default_refuses(self) -> None:
+        """The threshold actually changes the decision, in the safe direction."""
+        rain = RainForecast(expected_mm=35.0, confidence=0.55)
+        strict = plan_day(
+            field(depletion=30.0),
+            today=TODAY,
+            windows=[window()],
+            forecast_etc_mm=NORMAL,
+            rain=rain,
+        )
+        assert strict.decision is Decision.IRRIGATE
+
+        permissive = plan_day(
+            field(depletion=30.0),
+            today=TODAY,
+            windows=[window()],
+            forecast_etc_mm=NORMAL,
+            rain=RainForecast(expected_mm=35.0, confidence=0.55, min_confidence=0.5),
+        )
+        assert permissive.decision is Decision.SKIP
+        assert permissive.reason_code is ReasonCode.RAIN_EXPECTED
+
     def test_no_window_means_wait(self) -> None:
         """With no power there is nothing to instruct, however dry the field."""
         schedule = plan_day(field(depletion=120.0), today=TODAY, windows=[], forecast_etc_mm=NORMAL)
@@ -228,8 +260,8 @@ class TestTruncationAndCarryOver:
 
         Regression test for the double count removed on 5 September 2026, which
         cost the two-season simulation 1,467 mm of water and 1,452 mm of deep
-        percolation. See ``TestTruncatedRunAccounting`` for the invariant this
-        protects.
+        percolation. See ``TestTruncatedRunAccounting`` below for the invariant
+        this protects.
         """
         state = field(depletion=20.0)
         schedule = plan_day(state, today=TODAY, windows=[window()], forecast_etc_mm=NORMAL)

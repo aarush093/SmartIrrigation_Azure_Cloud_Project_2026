@@ -60,18 +60,34 @@ class RainForecast:
     conservative one used until that model validates.
     """
 
-    def __init__(self, expected_mm: float = 0.0, confidence: float = 0.0) -> None:
+    def __init__(
+        self,
+        expected_mm: float = 0.0,
+        confidence: float = 0.0,
+        *,
+        min_confidence: float | None = None,
+    ) -> None:
         """Configure a forecast.
 
         Args:
             expected_mm: Effective rainfall expected to reach the root zone
                 before the next window, mm.
             confidence: Calibrated probability that it does, 0 to 1.
+            min_confidence: Probability required before a skip is allowed.
+                Defaults to ``rain_skip.min_confidence`` in
+                ``params/scheduling.yaml``, currently 0.7. An argument so the
+                sensitivity of the whole system to this one threshold can be
+                measured rather than assumed.
         """
         self.expected_mm = expected_mm
         self.confidence = confidence
+        self.min_confidence = (
+            float(load_params("scheduling")["rain_skip"]["min_confidence"])
+            if min_confidence is None
+            else min_confidence
+        )
 
-    def covers(self, deficit_mm: float, *, min_confidence: float = 0.7) -> bool:
+    def covers(self, deficit_mm: float, *, min_confidence: float | None = None) -> bool:
         """Whether rain can be trusted to cover the deficit.
 
         Both conditions must hold. A high probability of insufficient rain does
@@ -81,12 +97,14 @@ class RainForecast:
 
         Args:
             deficit_mm: Depth that must be covered, mm.
-            min_confidence: Calibrated probability required to act.
+            min_confidence: Calibrated probability required to act. Defaults to
+                the threshold this forecast was constructed with.
 
         Returns:
             True only when the deficit is covered at sufficient confidence.
         """
-        return self.expected_mm >= deficit_mm and self.confidence >= min_confidence
+        threshold = self.min_confidence if min_confidence is None else min_confidence
+        return self.expected_mm >= deficit_mm and self.confidence >= threshold
 
 
 def window_capacity_mm(state: FieldState, window: PowerWindow) -> float:
