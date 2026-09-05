@@ -116,6 +116,40 @@ gets muted rather than fixed.
 
 ---
 
+## Deployment status
+
+*Added 5 September 2026.*
+
+**The infrastructure is a compiled and validated deliverable. It has not been
+deployed, and will not be in Phase-II.**
+
+| | |
+|---|---|
+| `src/azure/infra/main.bicep` | Compiles cleanly to **25 resource declarations**, verified with Bicep CLI v0.46.1 |
+| Alert rules | **5**, generated from a `copy` loop: `ingest-failure`, `scheduler-failure`, `call-failure-rate`, `missedcall-webhook-errors`, `cosmos-throttling` |
+| `make deploy-plan` | Ready. Runs `az deployment group what-if`, previews only, spends nothing |
+| `make deploy` | Ready. One command, once a subscription exists |
+| Deployed | **Nothing.** No Azure resource has been created and no credit has been spent |
+
+**Why no live deployment.** Azure for Students is disabled in VIT's managed
+tenant and self-signup is not permitted, so no subscription is available to this
+project. The blocker is an institutional tenant policy, not a technical or
+budgetary one: every resource in the template is on a free or consumption tier,
+and the template targets a resource group rather than a subscription, so it
+deploys with a single command the moment a subscription exists.
+
+**What this costs the evidence.** Every claim in this document about *what the
+template declares* is verified by compilation. Every claim about *runtime* — cost,
+latency, alert firing, the ingestion availability figure Objective 1 asks for —
+is not, and is marked `TODO [VERIFY]` rather than estimated. The distinction is
+stated here so a reader does not have to infer which is which.
+
+Azure CLI 2.90.0 and Bicep 0.46.1 are installed on the build machine, and
+`az login` was attempted; it authenticated but returned no subscriptions, which
+is what confirmed the tenant restriction rather than a configuration error.
+
+---
+
 ## Cost
 
 Every resource is on a free or consumption tier. At pilot scale, three farmers
@@ -127,4 +161,6 @@ cannot quietly consume the credit.
 
 `TODO [VERIFY]` actual monthly cost against the portal after the first
 deployment, and record it here. A stated cost with a number behind it is worth
-more at review than a claim that it is cheap.
+more at review than a claim that it is cheap. Per the deployment status above,
+this cannot be closed in Phase-II: it needs a subscription this project does not
+have.
