@@ -171,3 +171,134 @@ most from an hourly treatment.
 
 Objective 2 is reported as a measured uncertainty budget rather than as a passed
 or failed threshold.
+
+---
+
+## Objective 6, and the novelty claim
+
+Produced by `make sim`. Nine fields across three districts, three crops each,
+over two seasons (2024 and 2025): 18 field-seasons per policy.
+
+| File | Contents |
+|---|---|
+| `objective6_policy_comparison.csv` | Per policy, per field, per season |
+| `objective6_water_vs_stress.png` | The trade-off, in one picture |
+| `objective6_by_policy.png` | Each metric relative to the P1 baseline |
+
+### Method, and the two things that would have invalidated it
+
+**The baseline was corrected before the run.** An unconstrained FAO-56 trigger
+assumes the pump can run whenever the crop wants water, which is impossible on a
+rationed feeder. Beating it is not this project's claim and losing to it would
+mean nothing. The baseline is **P1**: a correct agronomic instruction that the
+farmer can only execute when the power happens to arrive, which is what a farmer
+using any existing advisory app actually experiences.
+
+**No hindsight.** The water balance is driven by observed archive weather, but
+every decision is driven by the forecast **as it was issued that morning**, from
+the Open-Meteo Previous Runs API, which reaches back beyond both simulated
+seasons. Had the skip rule read the archive it would have been skipping on rain
+it already knew had fallen, and the whole result would be worthless.
+
+Two defects were found and fixed during the run, both of which had inflated the
+scheduler's water use:
+
+1. **Phantom carry-over.** When the scheduler planned into a window on a later
+   day, the simulation still recorded the shortfall of that unperformed run as
+   carry-over. The next day added it to a depletion that already contained the
+   same shortfall, double-counting the deficit.
+2. **A flattered baseline.** P0 was applying a need-based depth, which is not
+   what "fixed interval, fixed depth" means. Traditional practice is "when the
+   power comes on my day, run the pump until it goes off", so P0 now applies
+   whatever one full window delivers, regardless of need.
+
+### Results
+
+Totals over 18 field-seasons.
+
+| Policy | Water (mm) | Stress days | Pump hours | Energy (kWh) | Deep percolation (mm) |
+|---|---:|---:|---:|---:|---:|
+| P0 calendar | 7,776 | 1,001 | 3,032 | 15,603 | 8,998 |
+| **P1 advisory, power constrained** | **6,141** | **846** | **2,959** | **15,942** | **5,547** |
+| P2 power-window scheduler | 8,961 | 312 | 4,513 | 24,976 | 7,685 |
+| P3 scheduler + rain skip | 8,852 | 320 | 4,463 | 24,683 | 7,593 |
+| *Pref unlimited power* | *6,920* | *277* | *3,369* | *18,418* | *5,829* |
+
+*Pref is **physically unachievable**: it assumes power on demand. It is a
+reference bound, not a policy anyone could follow.*
+
+### Objective 6 as written: NOT MET
+
+The criterion is at least 20 percent less water than fixed-interval irrigation.
+**P3 applies 13.8 percent more water than P0, not less.** The objective is not
+met and the number is reported as measured.
+
+On the other two metrics against the same baseline, P3 reaches **68.0 percent
+fewer stress days** and **15.6 percent less deep percolation**. Traditional
+practice both over-waters and under-delivers: P0 has the highest percolation of
+any policy *and* the most stress days, because a fixed depth on a fixed interval
+is the wrong amount at the wrong time in both directions.
+
+### The novelty claim: P3 versus P1
+
+This is the comparison the contribution rests on, and both policies operate
+under exactly the same power constraint.
+
+| Metric | P3 | P1 | Change |
+|---|---:|---:|---:|
+| Water applied | 8,852 mm | 6,141 mm | **+44.2%** |
+| Stress days | 320 | 846 | **−62.2%** |
+| Deep percolation | 7,593 mm | 5,547 mm | +36.9% |
+| Pump hours | 4,463 | 2,959 | +50.9% |
+
+**Headline: 62 percent fewer crop stress days than a conventional advisory under
+the same power constraint, at 44 percent higher water use.**
+
+The scheduler buys reliability with water, and the mechanism is visible in the
+policy itself. Because it cannot rely on the next window arriving, it refills
+early, and the capacity-limit branch fires while the deficit can still be repaid
+in one window. That keeps the root zone fuller, which is why stress nearly
+disappears, and also why more of the rain that follows drains below it.
+
+This is a real trade, not a defect, and it is reported as one. Whether it is the
+right trade depends on what water costs relative to yield in a given district,
+which is a question the simulation can now quantify per field rather than one
+that has to be argued.
+
+### The price of rationed electricity
+
+P3 against Pref isolates the cost of the constraint itself, since the two differ
+only in whether power is available on demand:
+
+**28 percent more water and 43 more stress days than the same scheduler with
+unlimited power.** That is the measured price a smallholder pays for a rationed
+feeder, and it is a number this project can produce because it models the
+constraint explicitly. No advisory in the related-work map (plan Section 3)
+reports it, because none of them models the window at all.
+
+### Rain calibration
+
+Fitted on the earlier season and scored on the later one; never on the same
+data, which would report memorisation rather than skill.
+
+| Model | Brier score |
+|---|---:|
+| Calibrated (empirical, binned by forecast amount and deficit) | **0.0859** |
+| Raw forecast probability | 0.1174 |
+
+The calibration is **better than the raw forecast**, by 27 percent on Brier
+score, over 4,344 held-out pairs.
+
+Its effect on the outcome is nevertheless small: P3 saves only 109 mm of water
+over P2, about 1.2 percent. At the 0.7 confidence threshold the rule requires,
+the calibrated probability rarely clears the bar, so the skip fires seldom. That
+is the conservative direction by design — a wrongly skipped irrigation costs the
+crop, while a needless one costs only water — but it means the rain skip is not
+where this system's value lies. **The power-window scheduling is.**
+
+`precipitation_probability` is null for every historical date in the Previous
+Runs API, which is why the confidence had to be measured from
+forecast-versus-observed pairs rather than read from a stored value. That is
+precisely the gap the calibration model exists to fill. The trained model is
+Krishna Agrawal's deliverable and should beat this empirical table; the
+comparison is its acceptance criterion.
