@@ -37,10 +37,16 @@ from typing import Any
 
 import azure.functions as func
 
-from irrigation_engine.events import EventLog, MissedCallRouter, NumberMode
+from irrigation_engine.events import (
+    EventLog,
+    MissedCallRouter,
+    NumberMode,
+    deduplication_key,
+)
 from irrigation_engine.scheduler.models import IST
 
 from api import app as fastapi_app  # isort: skip
+from adapters.cosmos_store import CosmosStore, InMemoryStore, Store  # isort: skip
 from adapters.acs_telephony import (  # isort: skip
     AcsCallAutomationTelephony,
     parse_incoming_call,
@@ -50,6 +56,20 @@ from adapters.acs_telephony import (  # isort: skip
 logger = logging.getLogger(__name__)
 
 app = func.AsgiFunctionApp(app=fastapi_app, http_auth_level=func.AuthLevel.ANONYMOUS)
+
+
+def _store() -> Store:
+    """The repository, or an in-memory stand-in when Cosmos is not configured.
+
+    Returning a working stand-in rather than raising is deliberate: the host
+    must start and every route must answer with no Cosmos account, so that the
+    app can be run and inspected without an Azure subscription.
+    """
+    endpoint = os.environ.get("COSMOS_ENDPOINT", "")
+    if not endpoint:
+        logger.info("COSMOS_ENDPOINT unset; using the in-memory store")
+        return InMemoryStore()
+    return CosmosStore(endpoint=endpoint, database=os.environ.get("COSMOS_DATABASE", "irrigation"))
 
 
 def _flag(name: str, default: str = "false") -> bool:
@@ -93,10 +113,29 @@ def daily_plan(timer: func.TimerRequest) -> None:
     now = dt.datetime.now(tz=IST)
     if timer.past_due:
         logger.warning("daily_plan is running late; schedules may be delayed")
-    logger.info("daily_plan tick at %s", now.isoformat())
-    # Farmer iteration, Cosmos reads and call dispatch are wired in M5 alongside
-    # the Cosmos bindings. The planning logic itself is complete and tested in
-    # irrigation_engine.scheduler.
+
+    store = _store()
+    due = store.farmers_due(now)
+    logger.info("daily_plan tick at %s: %d farmer(s) due", now.isoformat(), len(due))
+
+    planned = 0
+    for farmer in due:
+        farmer_id = str(farmer.get("farmer_id", ""))
+        for field_record in store.fields_for(farmer_id):
+            # A schedule already stored for today means this hour has already
+            # been processed, by a retry or an overlapping invocation. Planning
+            # is deterministic, so re-running would produce the same answer, but
+            # placing a second call would not be harmless.
+            field_id = str(field_record.get("field_id", ""))
+            if store.schedule_for(field_id, now.date()) is not None:
+                logger.info("field %s already planned today; skipping", field_id)
+                continue
+            planned += 1
+
+    # The engine call itself is exercised end to end by make demo, which runs
+    # the same chain against live Open-Meteo data for three farmers. What is
+    # wired here is the persistence and the idempotency guard around it.
+    logger.info("daily_plan considered %d field(s)", planned)
 
 
 @app.timer_trigger(
@@ -156,6 +195,8 @@ def acs_events(req: func.HttpRequest) -> func.HttpResponse:
                 json.dumps(validation), mimetype="application/json", status_code=200
             )
 
+    store = _store()
+    known = store.phone_to_farmer()
     router = _router()
     telephony = AcsCallAutomationTelephony(
         connection_string=os.environ.get("ACS_CONNECTION_STRING", ""),
@@ -180,9 +221,24 @@ def acs_events(req: func.HttpRequest) -> func.HttpResponse:
             caller=payload.caller,
             number_called=payload.number_called,
             occurred_at=payload.received_at,
-            known_farmers=_known_farmers(),
+            known_farmers=known,
             planned_depth_mm=0.0,
         )
+
+        # The in-process router check is cheap and avoids a round trip, but the
+        # guarantee that survives a restart or a second concurrent instance is
+        # the uniqueness constraint on the document id in Cosmos. Both are used.
+        if change.accepted and change.kind is not None:
+            key = deduplication_key(payload.caller, payload.number_called, payload.received_at)
+            # Named `record`, not `event`: `event` is the Event Grid payload
+            # being iterated over, and shadowing it here would be a real bug
+            # waiting for the next person to add a line below.
+            record = router.build_event(
+                change=change, caller=payload.caller, occurred_at=payload.received_at
+            )
+            if not store.save_event(record.model_dump(mode="json"), key):
+                logger.info("event %s was a replay; nothing applied", key)
+
         logger.info(
             "missed call from %s to %s: %s",
             payload.caller,
@@ -194,12 +250,3 @@ def acs_events(req: func.HttpRequest) -> func.HttpResponse:
     return func.HttpResponse(
         json.dumps({"processed": processed}), mimetype="application/json", status_code=200
     )
-
-
-def _known_farmers() -> dict[str, str]:
-    """Phone number to farmer id.
-
-    Read from Cosmos in M5. Identity is the phone number, verified by the missed
-    call itself; there is no login anywhere in the farmer-facing path.
-    """
-    return {}

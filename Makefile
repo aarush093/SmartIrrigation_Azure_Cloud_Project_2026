@@ -26,7 +26,7 @@ PIP    := $(BIN)/pip
 HANDOFF_FRONTEND := handoff/student1_frontend
 HANDOFF_AI       := handoff/student3_ai_model
 
-.PHONY: help setup test lint format demo demo-offline script-samples sim validate validate-hourly validate-inputs sensitivity func-start deploy-plan sync-handoff clean
+.PHONY: help setup test lint format demo demo-offline script-samples sim validate validate-hourly validate-inputs sensitivity func-start bicep-build deploy-plan deploy sync-handoff clean
 
 help:  ## Show the available targets
 	@grep -hE '^[a-zA-Z_-]+:.*?## ' $(MAKEFILE_LIST) \
@@ -99,11 +99,16 @@ sim:  ## Run the four-policy simulation study into results/
 func-start:  ## Run the Azure Functions host locally
 	cd src/azure/functions && func start
 
-deploy-plan:  ## Preview the Bicep deployment. Never deploys.
-	az deployment group what-if \
-		--resource-group $${AZURE_RESOURCE_GROUP:?set AZURE_RESOURCE_GROUP} \
-		--template-file src/azure/infra/main.bicep \
-		--parameters src/azure/infra/main.parameters.dev.json
+bicep-build:  ## Compile the Bicep to ARM, to check it parses. No Azure needed.
+	bicep build src/azure/infra/main.bicep --stdout > /dev/null && echo 'Bicep compiles'
+
+deploy-plan:  ## Preview the deployment. Changes nothing, spends nothing.
+	az deployment group what-if \n		--resource-group $${AZURE_RESOURCE_GROUP:?set AZURE_RESOURCE_GROUP} \n		--template-file src/azure/infra/main.bicep \n		--parameters src/azure/infra/main.parameters.dev.json
+
+deploy:  ## Deploy for real. THE OWNER RUNS THIS, never the build.
+	@echo 'This creates billable Azure resources. Ctrl-C now if that is not intended.'
+	@echo 'Every resource is on a free or consumption tier; see src/azure/infra/README.md.'
+	az deployment group create \n		--resource-group $${AZURE_RESOURCE_GROUP:?set AZURE_RESOURCE_GROUP} \n		--template-file src/azure/infra/main.bicep \n		--parameters src/azure/infra/main.parameters.dev.json
 
 clean:  ## Remove caches and build artefacts
 	rm -rf .pytest_cache .ruff_cache .mypy_cache htmlcov .coverage
