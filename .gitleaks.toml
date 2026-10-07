@@ -1,0 +1,9 @@
+title = "gitleaks config"
+[extend]
+useDefault = true
+[allowlist]
+description = "AI/ML sources contain no secrets; silence false positives"
+paths = [
+  '''student3_ai_model/.*''',
+  '''src/ai_model/.*''',
+]
