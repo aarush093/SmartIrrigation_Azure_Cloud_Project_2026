@@ -1,9 +1,9 @@
-# Dataset Details
+﻿# Dataset Details
 
 Data sources for *Cloud-Based Smart Irrigation Recommendation using Weather
 Intelligence* (BITE412L, Dr. Priya V).
 
-Six sources are used. All are public and free at the volumes this project
+Five sources are used. All are public and free at the volumes this project
 requires. Each was verified against its official documentation.
 
 ---
@@ -16,8 +16,7 @@ requires. Each was verified against its official documentation.
 | D2 | Open-Meteo Historical Archive | ERA5 / ERA5-Land reanalysis | CC BY 4.0 | Model training corpus |
 | D3 | NASA POWER Daily API | Agroclimatology, 300+ parameters | CC BY 4.0 | ET drivers and cross-validation |
 | D4 | ISRIC SoilGrids 2.0 | Global soil properties at 250 m | CC BY 4.0 | Field capacity and wilting point |
-| D5 | Crop Irrigation Scheduling (Kaggle) | Labelled tabular, 6 attributes | To be confirmed | Supervised training labels |
-| D6 | International Soil Moisture Network | In-situ soil moisture | Per contributing network | Independent validation |
+| D5 | International Soil Moisture Network | In-situ soil moisture | Per contributing network | Independent validation |
 
 **No API keys are required for D1 to D4, and none is stored in this repository.**
 
@@ -97,29 +96,7 @@ requires. Each was verified against its official documentation.
 
 ---
 
-## D5 — Crop Irrigation Scheduling dataset (Kaggle)
-
-| Field | Detail |
-|---|---|
-| **Dataset name** | Crop Irrigation Scheduling dataset, Kaggle open agricultural repository |
-| **Source** | Kaggle. Used as the training corpus in the IEEE study at <https://ieeexplore.ieee.org/document/10296736/> |
-| **URL** | *To be completed — exact Kaggle dataset URL* |
-| **Size** | *To be completed from the Kaggle dataset page* |
-| **Number of records** | *To be completed from the Kaggle dataset page* |
-| **Number of features** | **6 attributes, confirmed from the published study:** Crop Type, Crop Days, Soil Moisture, Temperature, Humidity, and Irrigation as the binary target |
-| **Data type** | Tabular CSV, mixed categorical and numeric |
-| **Licence** | *To be confirmed from the Kaggle licence field before use* |
-| **Purpose of use** | Provides the labelled irrigate/do-not-irrigate target needed to train and benchmark the classification component, since forecast and reanalysis sources supply features but no ground-truth irrigation decision |
-| **Preprocessing required** | Categorical encoding of crop type; class-balance check on the irrigation label with resampling or class weighting if skewed; feature scaling; chronological split if a time index exists, otherwise stratified k-fold; explicit schema mapping onto the platform's feature names to keep training and serving consistent |
-
-> **Outstanding action.** Four fields remain to be completed from the Kaggle
-> dataset page. They are deliberately left blank rather than estimated. If the
-> licence does not permit academic use, an alternative open irrigation-labelled
-> dataset will be substituted and this entry rewritten.
-
----
-
-## D6 — International Soil Moisture Network
+## D5 — International Soil Moisture Network
 
 | Field | Detail |
 |---|---|
@@ -156,8 +133,8 @@ Feature engineering
 Split and train
         │
         ├─ Chronological split by season (never random)
-        ├─ Train on D2 + D5, validate on held-out season
-        └─ Independent validation against D6
+        ├─ Train on D2, validate on held-out season
+        └─ Independent validation against D5
 ```
 
 ---
