@@ -1,0 +1,116 @@
+# Tamil script master.
+#
+# Tamil is a first-class master rather than a generated translation because the
+# Vellore pilot farmer is on the demonstration path. Plan Section 17.4.
+#
+# TODO [VERIFY native speaker] Every line below must be checked by a native
+# Tamil speaker before the pilot. This master was drafted without a native
+# speaker and must not be used in the field until it has been.
+#
+# Rules enforced by tests/test_scripts.py, as for the other masters.
+
+language: ta
+name: தமிழ்
+# TODO [VERIFY] confirm the Azure AI Speech voice name at build time.
+voice: ta-IN-PallaviNeural
+
+# Address term appended to the farmer's name. "Anna" is the respectful
+# term for an older man in Tamil and is the ordinary way an extension
+# worker would address a farmer. Marathi "kaka" would be simply wrong
+# here, which is why this is per-language rather than hardcoded.
+# TODO [VERIFY native speaker] whether "anna", "aiya" or "saar" fits the
+# Vellore pilot best.
+honorific: " அண்ணா"
+greeting: "{name}{honorific}, வணக்கம்."
+greeting_no_name: "வணக்கம்."
+
+acknowledge:
+  water_given: "நேற்று நீங்கள் தண்ணீர் பாய்ச்சியதாக சொன்னீர்கள்."
+  power_failed: "நேற்று மின்சாரம் வரவில்லை என்று சொன்னீர்கள்."
+
+# The spoken times already carry their part of day (iravu, kaalai), so these
+# sentences must NOT repeat it. Only the day is framed here.
+power:
+  today: "{start} முதல் {end} வரை மின்சாரம் இருக்கும்."
+  tomorrow: "நாளை {start} முதல் {end} வரை மின்சாரம் இருக்கும்."
+  unreliable: "இன்று மின்சாரம் உறுதியாக தெரியவில்லை."
+
+crop_needs_water: "{crop} பயிருக்கு தண்ணீர் தேவை."
+
+instruction:
+  with_time: "{start} பம்ப் ஆன் செய்யுங்கள், {stop} நிறுத்துங்கள்."
+  when_power_comes: "மின்சாரம் வந்ததும் பம்ப் ஆன் செய்து {duration} ஓட விடுங்கள், பிறகு நிறுத்துங்கள்."
+
+duration:
+  hours_and_minutes: "{hours} மணி {minutes} நிமிடம்"
+  hours_only: "{hours} மணி"
+  one_hour: "ஒரு மணி நேரம்"
+  minutes_only: "{minutes} நிமிடம்"
+
+reason:
+  stress_imminent: "நிலம் வறண்டு இருக்கிறது."
+  capacity_limit: "மின்சார நேரம் குறைவு, அதனால் தாமதிக்க வேண்டாம்."
+  opportunistic_topup: "மின்சாரம் இருக்கிறது, தண்ணீர் பாய்ச்சுங்கள்."
+  rain_expected: "மழை வரப்போகிறது."
+  carry_over: "மின்சார நேரம் குறைவு, மீதியை அடுத்த முறை முடிப்போம்."
+
+skip:
+  opening: "இன்று பம்ப் ஓட்ட வேண்டாம்."
+  rain: "மழை வரப்போகிறது."
+  followup: "மழை வரவில்லை என்றால் நாங்கள் மீண்டும் அழைப்போம்."
+
+question:
+  did_you_water: "நேற்று தண்ணீர் பாய்ச்சினீர்களா? ஆம் என்றால் ஒன்று அழுத்துங்கள், இல்லை என்றால் இரண்டு."
+
+repeat: "மீண்டும் கேட்க ஒன்று அழுத்துங்கள்."
+
+# --- Spoken clock times -------------------------------------------------------
+# TODO [VERIFY native speaker] Every word below. Tamil time expressions vary
+# considerably between spoken and written registers, and this master was drafted
+# without a native speaker. It must not reach the field until checked.
+#
+# A farmer-facing script contains NO DIGITS, for the same reasons as the other
+# masters. Tamil is handled with the regular "{hour} mani {minutes} nimidam"
+# construction throughout rather than the colloquial contractions, because the
+# regular form is unambiguous and a contraction that is wrong is worse than one
+# that is merely formal.
+time:
+  numbers:
+    1: "ஒன்று"
+    2: "இரண்டு"
+    3: "மூன்று"
+    4: "நான்கு"
+    5: "ஐந்து"
+    6: "ஆறு"
+    7: "ஏழு"
+    8: "எட்டு"
+    9: "ஒன்பது"
+    10: "பத்து"
+    11: "பதினொன்று"
+    12: "பன்னிரண்டு"
+  minutes:
+    5: "ஐந்து"
+    10: "பத்து"
+    15: "பதினைந்து"
+    20: "இருபது"
+    25: "இருபத்தைந்து"
+    30: "முப்பது"
+    35: "முப்பத்தைந்து"
+    40: "நாற்பது"
+    45: "நாற்பத்தைந்து"
+    50: "ஐம்பது"
+    55: "ஐம்பத்தைந்து"
+  part_of_day:
+    morning: "காலை"
+    afternoon: "மதியம்"
+    evening: "மாலை"
+    night: "இரவு"
+  # This master uses the regular construction throughout rather than the
+  # colloquial contractions, so there are no distinct quarter forms.
+  uses_quarter_forms: false
+  forms:
+    oclock: "{part} {hour} மணிக்கு"
+    quarter_past: "{part} {hour} மணி {minutes} நிமிடத்திற்கு"
+    half_past: "{part} {hour} மணி {minutes} நிமிடத்திற்கு"
+    quarter_to: "{part} {hour} மணி {minutes} நிமிடத்திற்கு"
+    minutes_past: "{part} {hour} மணி {minutes} நிமிடத்திற்கு"
