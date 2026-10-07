@@ -17,7 +17,6 @@ import datetime as dt
 
 import simulate_policies as sim
 from forecast_source import fetch_as_issued
-
 from irrigation_engine.models import DailyWeather
 from irrigation_engine.providers import OpenMeteoProvider
 

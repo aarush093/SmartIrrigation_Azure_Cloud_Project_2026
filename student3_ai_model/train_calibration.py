@@ -68,7 +68,7 @@ def main(argv: list[str] | None = None) -> int:
     print("Forecast calibration")
     print("  learns: P(observed rain covers the deficit | forecast, lead, month, district)")
     print(f"  features: {len(FEATURES)}, monotone constraints {MONOTONE_CONSTRAINTS}")
-    print(f"  baseline: the raw forecast probability")
+    print("  baseline: the raw forecast probability")
     print(f"  engine threshold: {ENGINE_CONFIDENCE_THRESHOLD}")
     print(f"  data in {args.data}, results to {args.out}")
     print()

@@ -42,13 +42,6 @@ from enum import StrEnum
 from pathlib import Path
 
 from forecast_source import fetch_as_issued
-from rain_calibration import (
-    CalibrationTable,
-    brier_score,
-    build_table,
-    raw_forecast_probability,
-)
-
 from irrigation_engine.balance import WaterBalance
 from irrigation_engine.crops import crop_calendar
 from irrigation_engine.models import DailyWeather, IrrigationMethod, PumpSpec
@@ -56,8 +49,8 @@ from irrigation_engine.providers import OpenMeteoProvider
 from irrigation_engine.pump import pump_discharge_l_per_min, resolve_efficiency
 from irrigation_engine.scheduler import (
     IST,
-    DeclaredRotation,
     Decision,
+    DeclaredRotation,
     FieldState,
     RainForecast,
     plan_day,
@@ -67,6 +60,12 @@ from irrigation_engine.soil import (
     resolve_soil,
     saxton_rawls,
     total_available_water,
+)
+from rain_calibration import (
+    CalibrationTable,
+    brier_score,
+    build_table,
+    raw_forecast_probability,
 )
 
 RESULTS = Path("results")
@@ -196,11 +195,11 @@ def next_window_after(rotation: DeclaredRotation, day: dt.date):  # type: ignore
     return windows[0] if windows else None
 
 
-def run_policy(  # noqa: PLR0912, PLR0915  # one branch per policy is the point
+def run_policy(  # one branch per policy is the point
     policy: Policy,
     field_spec: SimField,
     weather: dict[dt.date, DailyWeather],
-    as_issued,  # noqa: ANN001
+    as_issued,
     calibration: CalibrationTable,
     sowing: dt.date,
     season: str,
@@ -385,7 +384,7 @@ def _capacity(window_minutes: float, f: SimField, efficiency: float, discharge: 
 
 
 def _forecast_etc(
-    as_issued,  # noqa: ANN001
+    as_issued,
     day: dt.date,
     horizon: list[dt.date],
     field_spec: SimField,
@@ -455,7 +454,7 @@ def build_calibration(
     return table, brier_score(calibrated, outcomes), brier_score(raw, outcomes), len(test)
 
 
-def main(argv: list[str] | None = None) -> int:  # noqa: PLR0915
+def main(argv: list[str] | None = None) -> int:
     """Run the five-policy simulation."""
     parser = argparse.ArgumentParser(description="Five-policy irrigation simulation.")
     parser.add_argument("--out", type=Path, default=RESULTS)
