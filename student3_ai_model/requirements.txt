@@ -1,0 +1,13 @@
+# AI/ML dependencies, kept separate from the engine's.
+#
+# The engine is deliberately dependency-light (numpy, pydantic, httpx, pyyaml)
+# so the FAO-56 logic stays reviewable offline. Nothing here is imported by it.
+numpy>=1.26
+pandas>=2.2
+scikit-learn>=1.5
+xgboost>=2.1
+matplotlib>=3.9
+# Objective 3 sequence model. Torch is heavy; if that is a problem on the
+# machine you train on, a gradient-boosted model on lagged features is an
+# acceptable substitute and the report should say which was used.
+torch>=2.4
